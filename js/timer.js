@@ -17,15 +17,20 @@ export const PHASE_LABELS = {
 // Maakt de volgorde van fases voor één training.
 export function buildPhases(w) {
   const phases = [];
-  const add = (type, duration, round, set) => {
-    if (duration > 0) phases.push({ type, duration, round, set });
+  const add = (type, duration, round, set, exercise = null) => {
+    if (duration > 0) phases.push({ type, duration, round, set, exercise });
   };
+
+  // Welke oefening hoort bij welke ronde? Ronde 1 = oefening 1, enzovoort.
+  // Zijn er minder oefeningen dan rondes, dan beginnen we opnieuw bij de eerste.
+  const exercises = w.exercises || [];
+  const exerciseFor = (round) => (exercises.length ? exercises[(round - 1) % exercises.length] : null);
 
   add('prepare', w.prepare, 1, 1);
 
   for (let set = 1; set <= w.sets; set++) {
     for (let round = 1; round <= w.rounds; round++) {
-      add('work', w.work, round, set);
+      add('work', w.work, round, set, exerciseFor(round));
 
       const lastRound = round === w.rounds;
       const lastSet = set === w.sets;
@@ -92,6 +97,7 @@ export class Runner {
     this.remainingMs = this.phases[index].duration * 1000;
     this.endAt = Date.now() + this.remainingMs;
     this.lastSecond = null;
+    this.halfDone = false;
     this.cb.onPhase?.(this.phase, index);
   }
 
@@ -121,7 +127,16 @@ export class Runner {
       this.remainingMs = this.endAt - now;
       if (changed) {
         this.lastSecond = null;
+        this.halfDone = false;
         this.cb.onPhase?.(this.phase, this.index);
+      }
+
+      // Signaal halverwege de fase (alleen bij fases van minstens 10 seconden).
+      const halfMs = this.phase.duration * 500;
+      if (!this.halfDone && this.remainingMs <= halfMs) {
+        this.halfDone = true;
+        // Zijn we de helft al een eind voorbij (de app stond op de achtergrond)? Dan geen signaal meer.
+        if (this.phase.duration >= 10 && this.remainingMs > halfMs - 1500) this.cb.onHalfway?.(this.phase);
       }
 
       // Signaal op 3, 2 en 1 seconde voor het einde van een fase.

@@ -4,6 +4,8 @@
 // dus op het toestel zelf. Er is geen server of account nodig.
 // ---------------------------------------------------------------
 
+import { libraryItem } from './library.js';
+
 const KEY = 'tabata-timer.v1';
 
 // Kleuren waaruit een gebruiker kan kiezen voor zijn/haar avatar.
@@ -14,7 +16,7 @@ const emptyData = () => ({
   activeUserId: null,
   workouts: [],
   sessions: [],
-  settings: { sound: true, voice: false },
+  settings: { sound: true, halfway: true, silentMode: true, voice: false },
 });
 
 let data = load();
@@ -40,7 +42,27 @@ function save() {
   }
 }
 
-const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+// Maakt een oefening op basis van een oefening uit de bibliotheek.
+export function exerciseFromLibrary(libraryId) {
+  const item = libraryItem(libraryId);
+  return { id: newId(), name: item.name, note: item.note, libraryId, imageId: null, video: '' };
+}
+
+// Kijkt een link naar een filmpje na. Geeft '' terug als het geen geldige weblink is.
+// "youtu.be/abc" wordt aangevuld tot "https://youtu.be/abc".
+export function cleanUrl(value) {
+  const text = String(value ?? '').trim().slice(0, 300);
+  if (!text) return '';
+  try {
+    const url = new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`);
+    const ok = (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname.includes('.');
+    return ok ? url.href : '';
+  } catch (err) {
+    return '';
+  }
+}
 
 // ---------- Reservekopie: hulpfuncties ----------
 // Een bestand van buitenaf vertrouwen we niet zomaar. Deze functies
@@ -63,11 +85,33 @@ function uniqueById(items) {
   return items.filter((item) => !seen.has(item.id) && seen.add(item.id));
 }
 
+// Maakt van eender wat een lijst van objecten (of een lege lijst).
+const list = (value) => (Array.isArray(value) ? value.filter((item) => item && typeof item === 'object') : []);
+
+// De oefeningen van één training nakijken.
+const cleanExercises = (value) =>
+  uniqueById(
+    list(value)
+      .filter((e) => isId(e.id) && cleanText(e.name, 40))
+      .slice(0, 60)
+      .map((e) => ({
+        id: e.id,
+        name: cleanText(e.name, 40),
+        note: cleanText(e.note, 400),
+        libraryId: libraryItem(e.libraryId) ? e.libraryId : null,
+        imageId: isId(e.imageId) ? e.imageId : null,
+        video: cleanUrl(e.video),
+      }))
+  );
+
+// Een foto moet een data-URL van een afbeelding zijn, en niet te groot.
+const IMAGE_PATTERN = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+const isImage = (value) => typeof value === 'string' && value.length < 1500000 && IMAGE_PATTERN.test(value);
+
 // Leest de inhoud van een reservekopie en geeft nagekeken gegevens terug.
 // Geeft een fout als het bestand geen geldige reservekopie is.
 export function readBackup(raw) {
   if (!raw || raw.app !== BACKUP_APP || !Array.isArray(raw.users)) throw new Error('Geen geldige reservekopie');
-  const list = (value) => (Array.isArray(value) ? value.filter((item) => item && typeof item === 'object') : []);
 
   const users = uniqueById(
     list(raw.users)
@@ -96,9 +140,22 @@ export function readBackup(raw) {
         sets: cleanNumber(w.sets, 1, 20, 1),
         setRest: cleanNumber(w.setRest, 0, 3600, 60),
         cooldown: cleanNumber(w.cooldown, 0, 3600, 0),
+        exercises: cleanExercises(w.exercises),
         createdAt: cleanNumber(w.createdAt, 0, 9e15, Date.now()),
       }))
   );
+
+  // Foto's: alleen bewaren wat geldig is én door een oefening gebruikt wordt.
+  const images = {};
+  const rawImages = raw.images && typeof raw.images === 'object' ? raw.images : {};
+  for (const workout of workouts) {
+    for (const exercise of workout.exercises) {
+      const id = exercise.imageId;
+      if (!id) continue;
+      if (Object.hasOwn(rawImages, id) && isImage(rawImages[id])) images[id] = rawImages[id];
+      else exercise.imageId = null; // foto ontbreekt of is ongeldig
+    }
+  }
 
   const sessions = uniqueById(
     list(raw.sessions)
@@ -120,7 +177,13 @@ export function readBackup(raw) {
     users,
     workouts,
     sessions,
-    settings: { sound: raw.settings?.sound !== false, voice: raw.settings?.voice === true },
+    images,
+    settings: {
+      sound: raw.settings?.sound !== false,
+      halfway: raw.settings?.halfway !== false,
+      silentMode: raw.settings?.silentMode !== false,
+      voice: raw.settings?.voice === true,
+    },
     exportedAt: cleanNumber(raw.exportedAt, 0, 9e15, 0),
   };
 }
@@ -129,7 +192,19 @@ export function readBackup(raw) {
 const STARTER_WORKOUTS = [
   { name: 'Klassieke Tabata', group: 'Cardio', prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 60, cooldown: 0 },
   { name: 'HIIT 30/30', group: 'Cardio', prepare: 10, work: 30, rest: 30, rounds: 10, sets: 1, setRest: 60, cooldown: 60 },
-  { name: 'Krachtcircuit', group: 'Kracht', prepare: 15, work: 40, rest: 20, rounds: 6, sets: 3, setRest: 60, cooldown: 0 },
+  {
+    name: 'Krachtcircuit',
+    group: 'Kracht',
+    prepare: 15,
+    work: 40,
+    rest: 20,
+    rounds: 6,
+    sets: 3,
+    setRest: 60,
+    cooldown: 0,
+    // Oefeningen uit de bibliotheek (zie js/library.js), één per ronde.
+    exercises: ['squat', 'pushup', 'lunge', 'plank', 'jumpingjack', 'mountainclimber'],
+  },
 ];
 
 export const store = {
@@ -146,7 +221,15 @@ export const store = {
   addUser({ name, color }) {
     const user = { id: newId(), name, color, createdAt: Date.now() };
     data.users.push(user);
-    STARTER_WORKOUTS.forEach((w) => data.workouts.push({ ...w, id: newId(), userId: user.id, createdAt: Date.now() }));
+    STARTER_WORKOUTS.forEach((w) =>
+      data.workouts.push({
+        ...w,
+        exercises: (w.exercises || []).map((libraryId) => exerciseFromLibrary(libraryId)),
+        id: newId(),
+        userId: user.id,
+        createdAt: Date.now(),
+      })
+    );
     data.activeUserId = user.id;
     save();
     return user;
@@ -170,6 +253,13 @@ export const store = {
   // ---------- Trainingen ----------
   workoutsFor: (userId) => data.workouts.filter((w) => w.userId === userId),
   getWorkout: (id) => data.workouts.find((w) => w.id === id) || null,
+
+  // De id's van alle foto's die door een oefening gebruikt worden.
+  imageIds() {
+    const ids = new Set();
+    for (const workout of data.workouts) for (const exercise of workout.exercises || []) if (exercise.imageId) ids.add(exercise.imageId);
+    return ids;
+  },
 
   // Alle groepsnamen die deze gebruiker al gebruikt (alfabetisch).
   groupsFor(userId) {

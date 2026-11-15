@@ -1,0 +1,1452 @@
+/* ---------------------------------------------------------------
+   app.css — vormgeving in de stijl van pvmtdankaerts.be
+   Inhoud:
+     1. Kleuren en basis
+     2. Tekst (eyebrow, titels)
+     3. Knoppen
+     4. Schermen en onderdelen
+     5. Training bewerken
+     6. De lopende timer
+     7. Pop-ups en meldingen
+   --------------------------------------------------------------- */
+
+/* ============ 1. Kleuren en basis ============ */
+:root {
+  --paper: #f7f5ef;
+  --paper-deep: #edeae1;
+  --surface: #fffef9;
+  --ink: #1a1b20;
+  --ink-soft: #484b50;
+  --petrol: #174d50;
+  --petrol-hover: #0f3c3f;
+  --cyan: #87c7c6;
+  --cyan-soft: #dcefed;
+  --mint: #edf6f1;
+  --line: rgba(26, 27, 32, 0.14);
+  --danger: #a8433f;
+
+  --radius-sm: 0.85rem;
+  --radius-md: 1.5rem;
+  --radius-lg: 2.5rem;
+  --shadow: 0 24px 70px rgba(25, 44, 43, 0.11);
+
+  --font: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+
+  /* Ruimte voor de notch en de home-balk van de iPhone */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --gutter: 1.25rem;
+  --tabbar: 4.25rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 1rem;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
+  overscroll-behavior-y: none;
+}
+
+body.is-running {
+  overflow: hidden;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: inherit;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: none;
+  display: block;
+}
+
+:focus-visible {
+  outline: 2px solid var(--petrol);
+  outline-offset: 3px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ============ 2. Tekst ============ */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0 0 0.8rem;
+  color: var(--petrol);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.eyebrow::before {
+  content: "";
+  flex: none;
+  width: 1.4rem;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2rem, 9.5vw, 2.6rem);
+  font-weight: 650;
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.title--sm {
+  font-size: 1.75rem;
+}
+
+.lead {
+  margin: 1rem 0 0;
+  color: var(--ink-soft);
+  font-size: 1.08rem;
+  line-height: 1.55;
+}
+
+.lead--sm {
+  margin: 0.5rem 0 1.4rem;
+  font-size: 1rem;
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+.hint {
+  margin: 0.9rem 0.25rem 0;
+  font-size: 0.86rem;
+}
+
+.section-gap {
+  margin-top: 2.2rem;
+}
+
+/* ============ 3. Knoppen ============ */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 3.4rem;
+  padding: 0.8rem 1.35rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  transition: transform 0.15s, background 0.18s;
+}
+
+.button:active {
+  transform: scale(0.97);
+}
+
+.button svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.button--primary {
+  background: var(--petrol);
+  color: #fff;
+}
+
+.button--primary:active {
+  background: var(--petrol-hover);
+}
+
+.button--secondary {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.button--danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.button--wide {
+  display: flex;
+  width: 100%;
+}
+
+.button--wide + .button--wide {
+  margin-top: 0.65rem;
+}
+
+/* Ronde knop, zoals de pijltjes op de website */
+.round-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.9rem;
+  height: 2.9rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  transition: transform 0.15s;
+}
+
+.round-btn:active {
+  transform: scale(0.92);
+}
+
+.round-btn--primary {
+  width: 3.4rem;
+  height: 3.4rem;
+  border-color: transparent;
+  background: var(--petrol);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(23, 77, 80, 0.22);
+}
+
+.round-btn--primary svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-left: 0.12rem;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.25rem;
+  color: var(--petrol);
+  font-size: 0.93rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+}
+
+.link svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.link--danger {
+  color: var(--danger);
+}
+
+/* ============ 4. Schermen en onderdelen ============ */
+.screen {
+  max-width: 34rem;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: calc(var(--safe-top) + 1.6rem) var(--gutter) calc(var(--safe-bottom) + 2rem);
+}
+
+/* Zachte cyaan gloed linksboven, zoals de hero op de website */
+.screen--hero {
+  background: radial-gradient(circle at 0% 0%, rgba(135, 199, 198, 0.3), transparent 21rem) no-repeat;
+}
+
+.screen--tabs {
+  padding-bottom: calc(var(--safe-bottom) + var(--tabbar) + 2rem);
+}
+
+.logo {
+  display: block;
+  width: auto;
+  height: 3.1rem;
+  margin: 0.4rem 0 2.6rem;
+}
+
+/* ---- Avatar ---- */
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.avatar--light {
+  color: var(--ink);
+}
+
+.avatar--lg {
+  width: 4.25rem;
+  height: 4.25rem;
+  font-size: 1.75rem;
+}
+
+.avatar--ghost {
+  border: 1.5px dashed rgba(23, 77, 80, 0.45);
+  background: transparent !important;
+  color: var(--petrol);
+}
+
+.avatar-btn {
+  border-radius: 50%;
+  padding: 3px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* ---- Gebruikers kiezen ---- */
+.user-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.user-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  transition: transform 0.15s;
+}
+
+.user-card:active {
+  transform: scale(0.97);
+}
+
+.user-card .avatar {
+  margin-bottom: 0.9rem;
+}
+
+.user-card strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-card small {
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+}
+
+.user-card--new {
+  border-style: dashed;
+  background: transparent;
+}
+
+/* ---- Trainingen ---- */
+.topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.weekcard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 1.6rem 0 0.4rem;
+  border-radius: var(--radius-md);
+  background: var(--petrol);
+  color: #fff;
+}
+
+.weekcard > div {
+  padding: 1.05rem 1.25rem;
+}
+
+.weekcard > div + div {
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.weekcard strong {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+
+.weekcard span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.84rem;
+}
+
+.group {
+  margin-top: 1.9rem;
+}
+
+.workout {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.7rem;
+  padding: 0.35rem 1.1rem 0.35rem 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.workout-main {
+  flex: 1;
+  min-width: 0;
+  padding: 0.85rem 0 0.9rem 0.9rem;
+  border-radius: 1.2rem;
+}
+
+.workout h3 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.24rem;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workout p {
+  margin: 0.2rem 0 0.6rem;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.pill {
+  display: inline-block;
+  flex: none;
+  padding: 0.22rem 0.65rem;
+  border-radius: 999px;
+  background: var(--cyan-soft);
+  color: var(--petrol);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pill--muted {
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+}
+
+.screen > .button--wide {
+  margin-top: 1.4rem;
+}
+
+.empty {
+  margin-top: 1.6rem;
+  padding: 1.5rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.empty p {
+  margin: 0;
+}
+
+/* ---- Tabbalk onderaan ---- */
+.tabbar {
+  position: fixed;
+  z-index: 10;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  height: calc(var(--tabbar) + var(--safe-bottom));
+  padding: 0 0.5rem var(--safe-bottom);
+  border-top: 1px solid var(--line);
+  background: rgba(247, 245, 239, 0.88);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  max-width: 10rem;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.tab.is-active {
+  color: var(--petrol);
+  font-weight: 700;
+}
+
+.tab svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* ---- Lijsten en rijen ---- */
+.list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.list > * + * {
+  border-top: 1px solid var(--line);
+}
+
+.row,
+.session {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  min-height: 4rem;
+  padding: 0.75rem 1.1rem;
+}
+
+.row:active,
+.session:active {
+  background: var(--mint);
+}
+
+.row-body,
+.session-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-body strong,
+.session-body strong {
+  display: block;
+  overflow: hidden;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-body small,
+.session-body small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.session-time {
+  flex: none;
+  width: 2.9rem;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Aan/uit-schakelaar */
+.switch {
+  position: relative;
+  flex: none;
+  width: 3.1rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  background: var(--paper-deep);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: background 0.2s;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s;
+}
+
+[aria-checked="true"] .switch {
+  background: var(--petrol);
+}
+
+[aria-checked="true"] .switch::after {
+  transform: translateX(1.2rem);
+}
+
+/* ---- Geschiedenis ---- */
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  margin: 1.5rem 0 1.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--paper-deep);
+}
+
+.segmented button {
+  min-height: 2.6rem;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-size: 0.93rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.segmented .is-active {
+  background: var(--surface);
+  color: var(--petrol);
+  box-shadow: 0 1px 4px rgba(25, 44, 43, 0.14);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.tile {
+  padding: 0.95rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--cyan-soft);
+}
+
+.tile strong {
+  display: block;
+  color: var(--petrol);
+  font-size: 1.3rem;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+}
+
+.tile span {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.day {
+  margin: 1.6rem 0.25rem 0.6rem;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.day::first-letter {
+  text-transform: uppercase;
+}
+
+.usergroup {
+  margin-top: 1.25rem;
+  padding: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.usergroup-head {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.usergroup-head strong {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.usergroup-head em {
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.usergroup-head small {
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+}
+
+.usergroup .day {
+  margin-top: 1.1rem;
+}
+
+.usergroup > .muted {
+  margin: 0.9rem 0 0;
+  font-size: 0.9rem;
+}
+
+.usergroup > .link {
+  margin-top: 0.5rem;
+}
+
+/* ---- Profiel ---- */
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.4rem 0 1.4rem;
+}
+
+.screen > .link--danger {
+  margin-top: 1.6rem;
+}
+
+/* ============ 5. Training bewerken ============ */
+.screen--edit {
+  padding-bottom: calc(var(--safe-bottom) + 13.5rem);
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.navbar .eyebrow {
+  margin: 0;
+}
+
+.navbar .eyebrow::before {
+  display: none;
+}
+
+.navbar-spacer {
+  width: 2.9rem;
+}
+
+.textfield {
+  display: block;
+  margin-top: 1rem;
+}
+
+.textfield > span {
+  display: block;
+  margin: 0 0 0.4rem 0.25rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.textfield em {
+  color: var(--ink-soft);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.textfield input {
+  width: 100%;
+  min-height: 3.4rem;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 1.05rem; /* minstens 16px: anders zoomt de iPhone in bij het typen */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.textfield input::placeholder {
+  color: rgba(72, 75, 80, 0.6);
+}
+
+.textfield input:focus {
+  border-color: var(--petrol);
+  outline: 2px solid rgba(23, 77, 80, 0.18);
+  outline-offset: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+.chip {
+  min-height: 2.2rem;
+  padding: 0.3rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 4.4rem;
+  padding: 0.7rem 0.7rem 0.7rem 1.1rem;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.field-label strong {
+  display: block;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.field-label small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.dot {
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+}
+
+.dot--prepare,
+.seg--prepare {
+  background: #cfc9bb;
+}
+
+.dot--work,
+.seg--work {
+  background: var(--petrol);
+}
+
+.dot--rest,
+.seg--rest,
+.seg--setrest {
+  background: var(--cyan);
+}
+
+.dot--cooldown,
+.seg--cooldown {
+  background: #b9dcd9;
+}
+
+.dot--none {
+  border: 1.5px solid var(--line);
+}
+
+.stepper {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.step {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--petrol);
+}
+
+.step:active {
+  background: var(--cyan-soft);
+}
+
+.step svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.step-value {
+  width: 4.1rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 1.25rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.step-value:focus {
+  background: var(--cyan-soft);
+  outline: none;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.4rem;
+}
+
+/* Balk onderaan met totale tijd en de knoppen */
+.savebar {
+  position: fixed;
+  z-index: 10;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 0.95rem var(--gutter) calc(var(--safe-bottom) + 0.95rem);
+  border-top: 1px solid var(--line);
+  background: rgba(247, 245, 239, 0.92);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.savebar > * {
+  max-width: 31.5rem;
+  margin-inline: auto;
+}
+
+.savebar-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.savebar-info span {
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.savebar-info strong {
+  font-size: 1.5rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+}
+
+.timeline {
+  display: flex;
+  gap: 1px;
+  height: 0.55rem;
+  margin-top: 0.45rem;
+  margin-bottom: 0.9rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--paper-deep);
+}
+
+.seg {
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.savebar-buttons {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem;
+}
+
+/* ============ 6. De lopende timer ============ */
+.run {
+  /* Kleuren per fase: zie [data-phase] hieronder */
+  --bg: var(--paper);
+  --fg: var(--ink);
+  --soft: var(--ink-soft);
+  --ring: var(--petrol);
+  --track: rgba(26, 27, 32, 0.1);
+  --btn: rgba(26, 27, 32, 0.07);
+  --play-bg: var(--petrol);
+  --play-fg: #fff;
+
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--safe-top) + 0.9rem) var(--gutter) calc(var(--safe-bottom) + 1.25rem);
+  background: var(--bg);
+  color: var(--fg);
+  transition: background 0.35s, color 0.35s;
+}
+
+.run[data-phase="work"] {
+  --bg: var(--petrol);
+  --fg: #fff;
+  --soft: rgba(255, 255, 255, 0.76);
+  --ring: var(--cyan);
+  --track: rgba(255, 255, 255, 0.15);
+  --btn: rgba(255, 255, 255, 0.13);
+  --play-bg: #fff;
+  --play-fg: var(--petrol);
+}
+
+.run[data-phase="rest"],
+.run[data-phase="setrest"] {
+  --bg: var(--cyan);
+  --soft: rgba(26, 27, 32, 0.72);
+  --track: rgba(23, 77, 80, 0.18);
+  --btn: rgba(23, 77, 80, 0.14);
+}
+
+.run[data-phase="cooldown"] {
+  --bg: var(--cyan-soft);
+}
+
+.run[data-phase="done"] {
+  background: radial-gradient(circle at 0% 0%, rgba(135, 199, 198, 0.3), transparent 21rem) no-repeat var(--paper);
+  overflow-y: auto;
+}
+
+.run > * {
+  width: 100%;
+  max-width: 31.5rem;
+  margin-inline: auto;
+}
+
+.run-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.run .eyebrow {
+  min-width: 0;
+  margin: 0;
+  color: var(--soft);
+}
+
+.run-top .eyebrow {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-top .eyebrow::before {
+  display: none;
+}
+
+.round-btn--ghost {
+  border-color: transparent;
+  background: var(--btn);
+  color: inherit;
+}
+
+.round-btn--lg {
+  width: 3.6rem;
+  height: 3.6rem;
+}
+
+.round-btn--lg svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.round-btn--play {
+  width: 5.25rem;
+  height: 5.25rem;
+  border-color: transparent;
+  background: var(--play-bg);
+  color: var(--play-fg);
+  box-shadow: 0 12px 30px rgba(6, 30, 31, 0.22);
+}
+
+.round-btn--play svg {
+  width: 2.3rem;
+  height: 2.3rem;
+}
+
+.run-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  text-align: center;
+}
+
+.run-phase {
+  margin: 0 0 0.9rem;
+  font-size: clamp(1.9rem, 9vw, 2.6rem);
+  font-weight: 650;
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+.ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(80vw, 44vh, 24rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  color: inherit;
+}
+
+.ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ring circle {
+  fill: none;
+  stroke-width: 14;
+}
+
+.ring-track {
+  stroke: var(--track);
+}
+
+.ring-bar {
+  stroke: var(--ring);
+  stroke-linecap: round;
+  transition: stroke 0.35s;
+}
+
+.ring-time {
+  font-size: min(25vw, 13.5vh, 7.4rem);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.055em;
+}
+
+.ring-note {
+  position: absolute;
+  bottom: 21%;
+  left: 0;
+  right: 0;
+  color: var(--soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Laatste drie seconden: het getal "klopt" mee */
+.run.is-ending .ring-time {
+  animation: pulse 1s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1.12);
+  }
+  40%,
+  100% {
+    transform: scale(1);
+  }
+}
+
+.run.is-paused .ring-bar {
+  opacity: 0.45;
+}
+
+.run-next {
+  min-height: 1.5em;
+  margin: 1rem 0 0;
+  color: var(--soft);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.run-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.run-meta strong {
+  display: block;
+  font-size: 1.45rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+}
+
+.run-meta span {
+  color: var(--soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.run-progress {
+  height: 0.4rem;
+  margin-top: 1rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.run-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ring);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.run-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.6rem;
+  margin-top: 1.4rem;
+}
+
+/* ---- Training afgerond ---- */
+.done {
+  margin-block: auto;
+  padding: 2rem 0;
+}
+
+.done .eyebrow {
+  margin-bottom: 0.8rem;
+  color: var(--petrol);
+}
+
+.done .tiles {
+  margin-top: 1.75rem;
+}
+
+.done-buttons {
+  margin-top: 1.75rem;
+}
+
+/* ============ 7. Pop-ups en meldingen ============ */
+.sheet-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(6, 30, 31, 0);
+  transition: background 0.25s;
+}
+
+.sheet-backdrop.is-open {
+  background: rgba(6, 30, 31, 0.42);
+}
+
+.sheet {
+  width: 100%;
+  max-width: 34rem;
+  max-height: 92dvh;
+  padding: 1.75rem var(--gutter) calc(var(--safe-bottom) + 1.25rem);
+  overflow-y: auto;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--surface);
+  box-shadow: 0 -1.5rem 5rem rgba(0, 0, 0, 0.2);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.is-open .sheet {
+  transform: none;
+}
+
+.sheet-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+
+.sheet .textfield input {
+  background: #fff;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin: 1.1rem 0 1.5rem;
+  padding: 0;
+  border: 0;
+}
+
+.swatches legend {
+  margin: 0 0 0.5rem 0.25rem;
+  padding: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.swatches input {
+  position: absolute;
+  opacity: 0;
+}
+
+.swatches span {
+  display: block;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.swatches input:checked + span {
+  box-shadow: 0 0 0 2.5px var(--petrol);
+}
+
+.swatches input:focus-visible + span {
+  outline: 2px solid var(--petrol);
+  outline-offset: 4px;
+}
+
+.toast {
+  position: fixed;
+  z-index: 120;
+  bottom: calc(var(--safe-bottom) + var(--tabbar) + 1rem);
+  left: 50%;
+  padding: 0.7rem 1.2rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: toast-in 0.25s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0.6rem);
+  }
+}
+
+/* Wie liever geen beweging ziet: animaties uit */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Kleinere toestellen (bv. iPhone SE): de timer compacter maken zodat alles past */
+@media (max-height: 720px) {
+  .run-phase {
+    margin-bottom: 0.6rem;
+    font-size: 1.8rem;
+  }
+
+  .ring {
+    width: min(74vw, 38vh);
+  }
+
+  .run-next {
+    margin-top: 0.6rem;
+    font-size: 0.93rem;
+  }
+
+  .run-meta {
+    margin-top: 0.4rem;
+  }
+
+  .run-meta strong {
+    font-size: 1.25rem;
+  }
+
+  .run-progress {
+    margin-top: 0.7rem;
+  }
+
+  .run-controls {
+    margin-top: 1rem;
+  }
+
+  .round-btn--play {
+    width: 4.4rem;
+    height: 4.4rem;
+  }
+
+  .round-btn--play svg {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+@media (max-height: 600px) {
+  .run {
+    padding-bottom: calc(var(--safe-bottom) + 0.8rem);
+  }
+
+  .ring {
+    width: min(72vw, 39vh);
+  }
+
+  .ring circle {
+    stroke-width: 16;
+  }
+}

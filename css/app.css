@@ -1450,3 +1450,35 @@ svg {
     stroke-width: 16;
   }
 }
+
+/* ---- Reservekopie ---- */
+.avatar--plain {
+  border-style: solid;
+  border-color: var(--line);
+}
+
+.avatar--plain svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Het veld om een bestand te kiezen is onzichtbaar; de knop in de lijst opent het. */
+.file-picker {
+  position: fixed;
+  left: -100vw;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.sheet-note {
+  margin: 0.45rem 0.25rem 1.1rem;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.sheet > .link {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}

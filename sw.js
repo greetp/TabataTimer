@@ -4,7 +4,7 @@
 // nieuwste versie), en als dat niet lukt de bewaarde kopie tonen.
 // ---------------------------------------------------------------
 
-const CACHE = 'tabata-timer-v1';
+const CACHE = 'tabata-timer-v2';
 
 const FILES = [
   './',

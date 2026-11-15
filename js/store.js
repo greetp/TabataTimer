@@ -4,6 +4,8 @@
 // dus op het toestel zelf. Er is geen server of account nodig.
 // ---------------------------------------------------------------
 
+import { libraryItem } from './library.js';
+
 const KEY = 'tabata-timer.v1';
 
 // Kleuren waaruit een gebruiker kan kiezen voor zijn/haar avatar.
@@ -42,6 +44,26 @@ function save() {
 
 export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
+// Maakt een oefening op basis van een oefening uit de bibliotheek.
+export function exerciseFromLibrary(libraryId) {
+  const item = libraryItem(libraryId);
+  return { id: newId(), name: item.name, note: item.note, libraryId, imageId: null, video: '' };
+}
+
+// Kijkt een link naar een filmpje na. Geeft '' terug als het geen geldige weblink is.
+// "youtu.be/abc" wordt aangevuld tot "https://youtu.be/abc".
+export function cleanUrl(value) {
+  const text = String(value ?? '').trim().slice(0, 300);
+  if (!text) return '';
+  try {
+    const url = new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`);
+    const ok = (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname.includes('.');
+    return ok ? url.href : '';
+  } catch (err) {
+    return '';
+  }
+}
+
 // ---------- Reservekopie: hulpfuncties ----------
 // Een bestand van buitenaf vertrouwen we niet zomaar. Deze functies
 // kijken elke waarde na en zetten ze in de juiste vorm.
@@ -76,7 +98,9 @@ const cleanExercises = (value) =>
         id: e.id,
         name: cleanText(e.name, 40),
         note: cleanText(e.note, 400),
+        libraryId: libraryItem(e.libraryId) ? e.libraryId : null,
         imageId: isId(e.imageId) ? e.imageId : null,
+        video: cleanUrl(e.video),
       }))
   );
 
@@ -173,14 +197,8 @@ const STARTER_WORKOUTS = [
     sets: 3,
     setRest: 60,
     cooldown: 0,
-    exercises: [
-      { name: 'Squats', note: 'Voeten op schouderbreedte. Zak door je knieën alsof je gaat zitten en hou je rug recht.' },
-      { name: 'Push-ups', note: 'Handen onder je schouders, lichaam in één lijn. Op je knieën mag ook.' },
-      { name: 'Lunges', note: 'Stap ver naar voren en zak tot beide knieën gebogen zijn. Wissel van been.' },
-      { name: 'Plank', note: 'Steun op je onderarmen en tenen. Span je buik aan en hou je lichaam recht.' },
-      { name: 'Jumping jacks', note: 'Spring met je benen open en breng je armen boven je hoofd.' },
-      { name: 'Mountain climbers', note: 'Start in plankhouding en trek om de beurt je knieën naar je borst.' },
-    ],
+    // Oefeningen uit de bibliotheek (zie js/library.js), één per ronde.
+    exercises: ['squat', 'pushup', 'lunge', 'plank', 'jumpingjack', 'mountainclimber'],
   },
 ];
 
@@ -201,7 +219,7 @@ export const store = {
     STARTER_WORKOUTS.forEach((w) =>
       data.workouts.push({
         ...w,
-        exercises: (w.exercises || []).map((e) => ({ id: newId(), imageId: null, ...e })),
+        exercises: (w.exercises || []).map((libraryId) => exerciseFromLibrary(libraryId)),
         id: newId(),
         userId: user.id,
         createdAt: Date.now(),

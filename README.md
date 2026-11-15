@@ -9,6 +9,8 @@ De app is een **web-app (PWA)**: je zet ze op het beginscherm van je iPhone en z
 - **Meerdere gebruikers** – elk profiel heeft een eigen naam, kleur, trainingen en sessies.
 - **Trainingen op maat** – voorbereiding, werk, rust, rondes, sets, rust tussen sets en cooling-down.
 - **Groepen** – orden je trainingen per groep (bv. Cardio, Kracht).
+- **Oefeningen** – kies per training oefeningen uit een ingebouwde bibliotheek met tekeningen, of maak een eigen
+  oefening met naam, uitleg, een eigen foto en een link naar een filmpje. De timer toont bij elke ronde wat je moet doen.
 - **Duidelijke timer** – grote cijfers, een kleur per fase, pauze / vorige / volgende, piepjes op 3-2-1.
 - **Geschiedenis** – alle afgewerkte sessies per dag, voor jezelf of voor iedereen (gegroepeerd per gebruiker).
 - **Offline** – alles wordt op het toestel zelf bewaard. Er is geen account of server nodig.
@@ -78,6 +80,10 @@ Goed om te weten:
 | `css/app.css` | Alle vormgeving (kleuren, lettertypes, knoppen, schermen). |
 | `js/app.js` | Alle schermen en wat er gebeurt als je op een knop tikt. |
 | `js/store.js` | Bewaart gebruikers, trainingen en sessies in `localStorage`. |
+| `js/images.js` | Bewaart de eigen foto's van oefeningen (in IndexedDB) en verkleint ze. |
+| `js/library.js` | De bibliotheek met klassieke oefeningen: naam, groep en uitleg. |
+| `js/library-art.js` | De tekeningen van die oefeningen. Automatisch gemaakt, niet met de hand aanpassen. |
+| `tools/teken-oefeningen.mjs` | Het script dat de tekeningen maakt. De app zelf heeft het niet nodig. |
 | `js/timer.js` | De "motor": bouwt de fases op en houdt de tijd bij. |
 | `js/sound.js` | De piepjes en de (optionele) gesproken stem. |
 | `sw.js` | Service worker: zorgt dat de app zonder internet werkt. |
@@ -93,6 +99,21 @@ Goed om te weten:
 
 De app op de iPhone kijkt bij het openen en telkens ze weer naar voren komt of het nummer veranderd is,
 en herlaadt zichzelf dan. Wil je niet wachten, tik dan in de app op **Profiel → App vernieuwen**.
+
+### Een oefening aan de bibliotheek toevoegen
+
+1. Voeg in `js/library.js` een regel toe aan `LIBRARY`, met een eigen `id` (bv. `calfraise`), een groep, een naam en uitleg.
+2. Teken het figuurtje in `tools/teken-oefeningen.mjs`: voeg onder `DRAWINGS` een houding toe met hetzelfde `id`.
+   Bovenaan dat bestand staat uitgelegd hoe je een houding beschrijft.
+3. Maak de tekeningen opnieuw:
+
+   ```bash
+   node tools/teken-oefeningen.mjs
+   ```
+
+4. Verhoog het nummer in `version.json` en zet alles op `main`.
+
+De uitleg bij een oefening aanpassen kan gewoon in `js/library.js`; daarvoor hoef je niets opnieuw te tekenen.
 
 ### Vaak gevraagde aanpassingen
 

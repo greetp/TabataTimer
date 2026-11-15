@@ -10,7 +10,9 @@
 //   6. Acties: wat gebeurt er bij een tik op een knop
 // ---------------------------------------------------------------
 
-import { store, AVATAR_COLORS, readBackup } from './store.js';
+import { store, AVATAR_COLORS, readBackup, newId, cleanUrl, exerciseFromLibrary } from './store.js';
+import { images, shrinkImage } from './images.js';
+import { LIBRARY, LIBRARY_GROUPS, libraryImage } from './library.js';
 import { buildPhases, totalSeconds, formatTime, Runner, PHASE_LABELS } from './timer.js';
 import { sound } from './sound.js';
 
@@ -81,6 +83,10 @@ const icon = {
   user: line('<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>'),
   soundOn: line('<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4zM15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/>'),
   soundOff: line('<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4zM16 9.5l5 5M21 9.5l-5 5"/>'),
+  image: line('<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/>'),
+  info: line('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.8v.2"/>'),
+  up: line('<path d="M6 14.5l6-6 6 6"/>'),
+  down: line('<path d="M6 9.5l6 6 6-6"/>'),
   refresh: line('<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/>'),
   exportFile: line('<path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>'),
   importFile: line('<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>'),
@@ -102,6 +108,9 @@ function longTime(seconds) {
 const LIGHT_COLORS = ['#87c7c6'];
 const avatar = (user, size = '') =>
   `<span class="avatar ${size} ${LIGHT_COLORS.includes(user.color) ? 'avatar--light' : ''}" style="background:${esc(user.color)}">${esc(user.name.trim().charAt(0).toUpperCase() || '?')}</span>`;
+
+// De afbeelding van een oefening: eerst de eigen foto, anders de tekening uit de bibliotheek.
+const exerciseImage = (exercise) => images.get(exercise.imageId) || libraryImage(exercise.libraryId);
 
 const startOfDay = (time) => new Date(time).setHours(0, 0, 0, 0);
 
@@ -149,6 +158,7 @@ function render() {
 
 function go(view) {
   ui.view = view;
+  if (!ui.draft) images.keepOnly(store.imageIds()); // foto's die nergens meer gebruikt worden opruimen
   render();
   if (updatePending) reloadWhenSafe(); // een uitgestelde update nu toepassen
 }
@@ -208,6 +218,7 @@ function viewHome(user) {
         <h3>${esc(w.name)}</h3>
         <p>${workoutSummary(w)}</p>
         <span class="pill">${formatTime(totalSeconds(w))} min</span>
+        ${w.exercises?.length ? `<span class="pill pill--muted">${plural(w.exercises.length, 'oefening', 'oefeningen')}</span>` : ''}
       </button>
       <button class="round-btn round-btn--primary" data-action="start-workout" data-id="${w.id}" aria-label="${esc(w.name)} starten">${icon.play}</button>
     </article>`;
@@ -422,7 +433,7 @@ const FIELDS = [
 const DOTS = { prepare: 'prepare', work: 'work', rest: 'rest', setRest: 'rest', cooldown: 'cooldown' };
 
 function newDraft(userId) {
-  return { userId, name: '', group: '', prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 60, cooldown: 0 };
+  return { userId, name: '', group: '', prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 60, cooldown: 0, exercises: [] };
 }
 
 function viewEdit(user) {
@@ -467,6 +478,11 @@ function viewEdit(user) {
     <div class="list list--fields">${FIELDS.map(field).join('')}</div>
     <p class="muted hint">Tip: tik op een getal om het zelf in te typen, of hou + of − ingedrukt.</p>
 
+    <h2 class="eyebrow section-gap">Oefeningen</h2>
+    <div id="exerciseList"></div>
+    <button class="button button--secondary button--wide" data-action="open-library">${icon.plus} Oefening toevoegen</button>
+    <p class="muted hint" id="exerciseHint"></p>
+
     ${
       d.id
         ? `<div class="edit-actions">
@@ -505,6 +521,43 @@ function refreshEditor() {
   app.querySelector('#draftTotal').textContent = `${formatTime(phases.reduce((sum, p) => sum + p.duration, 0))} min`;
   app.querySelector('#draftTimeline').innerHTML =
     phases.length <= 160 ? phases.map((p) => `<i class="seg seg--${p.type}" style="flex-grow:${p.duration}"></i>`).join('') : '<i class="seg seg--work" style="flex-grow:1"></i>';
+
+  refreshExercises();
+}
+
+// Tekent de lijst met oefeningen op het bewerkscherm.
+function refreshExercises() {
+  const d = ui.draft;
+  const list = d.exercises || (d.exercises = []);
+  const count = list.length;
+
+  const row = (e, i) => {
+    const src = exerciseImage(e);
+    const details = [e.note || 'Geen uitleg', e.video ? 'met filmpje' : ''].filter(Boolean).join(' · ');
+    return `<div class="exercise">
+      <button class="exercise-main" data-action="edit-exercise" data-id="${e.id}" aria-label="${esc(e.name)} bewerken">
+        ${src ? `<img class="thumb" src="${esc(src)}" alt="" />` : `<span class="thumb thumb--empty">${i + 1}</span>`}
+        <span class="row-body"><strong>${esc(e.name)}</strong><small>${esc(details)}</small></span>
+      </button>
+      ${
+        count > 1
+          ? `<button class="step step--sm" data-action="move-exercise" data-id="${e.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="${esc(e.name)} omhoog">${icon.up}</button>
+             <button class="step step--sm" data-action="move-exercise" data-id="${e.id}" data-dir="1" ${i === count - 1 ? 'disabled' : ''} aria-label="${esc(e.name)} omlaag">${icon.down}</button>`
+          : ''
+      }
+    </div>`;
+  };
+  app.querySelector('#exerciseList').innerHTML = count ? `<div class="list list--exercises">${list.map(row).join('')}</div>` : '';
+
+  // Uitleg over hoe oefeningen en rondes samenhangen.
+  const rounds = d.rounds;
+  let hint;
+  if (!count) hint = 'Voeg oefeningen toe als je tijdens de timer wil zien wat je moet doen. Zonder oefeningen toont de timer gewoon "Werk".';
+  else if (count === rounds) hint = 'Elke ronde heeft haar eigen oefening.';
+  else if (count < rounds) hint = `Je hebt ${plural(rounds, 'ronde', 'rondes')} en ${plural(count, 'oefening', 'oefeningen')}. De oefeningen herhalen zich in dezelfde volgorde.`;
+  else hint = `Je hebt ${plural(count, 'oefening', 'oefeningen')} maar ${plural(rounds, 'ronde', 'rondes')}. Alleen de eerste ${rounds} ${rounds === 1 ? 'wordt' : 'worden'} gebruikt.`;
+  if (count && count !== rounds && count <= 99) hint += ` <button class="link link--inline" data-action="match-rounds">Zet het aantal rondes op ${count}</button>`;
+  app.querySelector('#exerciseHint').innerHTML = hint;
 }
 
 const clamp = (value, f) => Math.min(f.max, Math.max(f.min, value));
@@ -582,16 +635,28 @@ function startRun(workout) {
     </header>
 
     <div class="run-main">
+      <p class="run-kicker" data-ref="kicker" hidden>Werk</p>
       <h1 class="run-phase" data-ref="phase" aria-live="polite"></h1>
-      <button class="ring" data-action="run-toggle" aria-label="Pauzeren of hervatten">
-        <svg viewBox="0 0 320 320" aria-hidden="true">
-          <circle class="ring-track" cx="160" cy="160" r="140" />
-          <circle class="ring-bar" data-ref="ring" cx="160" cy="160" r="140" stroke-dasharray="${RING_LENGTH}" transform="rotate(-90 160 160)" />
-        </svg>
-        <span class="ring-time" data-ref="time"></span>
-        <span class="ring-note" data-ref="note"></span>
-      </button>
+      <div class="ring-wrap" data-ref="wrap">
+        <button class="ring" data-action="run-toggle" aria-label="Pauzeren of hervatten">
+          <svg viewBox="0 0 320 320" aria-hidden="true">
+            <circle class="ring-track" cx="160" cy="160" r="140" />
+            <circle class="ring-bar" data-ref="ring" cx="160" cy="160" r="140" stroke-dasharray="${RING_LENGTH}" transform="rotate(-90 160 160)" />
+          </svg>
+          <span class="ring-time" data-ref="time"></span>
+          <span class="ring-note" data-ref="note"></span>
+        </button>
+      </div>
       <p class="run-next" data-ref="next"></p>
+      <button class="run-card" data-action="run-exercise" data-ref="card" hidden>
+        <img data-ref="cardImg" alt="" hidden />
+        <span class="run-card-body">
+          <small data-ref="cardLabel"></small>
+          <strong data-ref="cardName"></strong>
+          <span data-ref="cardNote"></span>
+        </span>
+        <span class="run-card-more" data-ref="cardMore">${icon.info}</span>
+      </button>
     </div>
 
     <div class="run-meta">
@@ -616,17 +681,56 @@ function startRun(workout) {
     if (shown[name] !== text) ref[name].textContent = shown[name] = text;
   };
 
+  // De cirkel neemt alle ruimte die overblijft tussen de titel en de rest van het scherm.
+  // Zo past alles, ook op een klein toestel of met een lange naam en een oefeningkaart.
+  const fitRing = () => {
+    const size = Math.floor(Math.min(ref.wrap.clientWidth, ref.wrap.clientHeight));
+    if (size > 0) ref.wrap.style.setProperty('--ring-size', `${size}px`);
+  };
+  const observer = 'ResizeObserver' in window ? new ResizeObserver(fitRing) : null;
+  observer?.observe(ref.wrap);
+
   const runner = new Runner(phases, {
     onPhase(phase, index) {
       el.dataset.phase = phase.type;
       setThemeColor(phase.type);
-      setText('phase', PHASE_LABELS[phase.type]);
       setText('round', `${phase.round}/${workout.rounds}`);
       setText('set', `${phase.set}/${workout.sets}`);
-      const upcoming = phases[index + 1];
-      setText('next', upcoming ? `Hierna: ${PHASE_LABELS[upcoming.type].toLowerCase()} · ${formatTime(upcoming.duration)}` : 'Laatste fase. Bijna klaar!');
 
-      if (phase.type === 'work') sound.work();
+      // Tijdens het werk tonen we de naam van de oefening; anders de naam van de fase.
+      const exercise = phase.type === 'work' ? phase.exercise : null;
+      setText('phase', exercise ? exercise.name : PHASE_LABELS[phase.type]);
+      ref.phase.classList.toggle('is-long', !!exercise && exercise.name.length > 14);
+      ref.kicker.hidden = !exercise;
+
+      // Tijdens rust of voorbereiding tonen we al welke oefening eraan komt.
+      const nextWork = phases.slice(index + 1).find((p) => p.type === 'work');
+      const comingUp = phase.type === 'work' || phase.type === 'cooldown' ? null : nextWork?.exercise || null;
+
+      // De kaart onder de cirkel: de uitleg van de huidige oefening, of de volgende oefening.
+      const shownExercise = exercise || comingUp;
+      const src = shownExercise ? exerciseImage(shownExercise) : null;
+      const hasDetails = !!shownExercise && !!(src || shownExercise.note || shownExercise.video);
+      const showCard = comingUp ? true : hasDetails;
+      ref.card.hidden = !showCard;
+      ref.card.disabled = !hasDetails;
+      ref.cardMore.hidden = !hasDetails;
+      if (showCard) {
+        ref.cardImg.hidden = !src;
+        if (src && shown.cardSrc !== src) ref.cardImg.src = shown.cardSrc = src;
+        setText('cardLabel', comingUp ? 'Hierna' : 'Uitleg');
+        setText('cardName', comingUp ? shownExercise.name : '');
+        setText('cardNote', shownExercise.note || (comingUp ? '' : shownExercise.video ? 'Tik om het filmpje te bekijken' : ''));
+      }
+      run.exercise = hasDetails ? shownExercise : null;
+
+      // De regel "Hierna: ..." is niet nodig als de kaart al zegt wat er komt.
+      const upcoming = phases[index + 1];
+      ref.next.hidden = !!comingUp;
+      setText('next', upcoming ? `Hierna: ${PHASE_LABELS[upcoming.type].toLowerCase()} · ${formatTime(upcoming.duration)}` : 'Laatste fase. Bijna klaar!');
+      fitRing();
+
+      if (phase.type === 'work') sound.work(exercise ? exercise.name : 'Werk');
       else if (phase.type === 'prepare') sound.prepare();
       else sound.rest(PHASE_LABELS[phase.type]);
     },
@@ -653,7 +757,7 @@ function startRun(workout) {
     },
   });
 
-  run = { el, ref, runner, workout, user };
+  run = { el, ref, runner, workout, user, observer, exercise: null };
   runner.start();
 }
 
@@ -705,6 +809,7 @@ function endRun(completed) {
 function closeRun() {
   if (!run) return;
   run.runner.stop();
+  run.observer?.disconnect();
   run.el.remove();
   run = null;
   document.body.classList.remove('is-running');
@@ -743,6 +848,7 @@ function closeSheet() {
   document.querySelector('.sheet-backdrop')?.remove();
   sheetConfirm = null;
   pendingBackup = null;
+  exerciseEdit = null;
 }
 
 function confirmSheet({ title, text, label, danger = false, cancel = 'Annuleren', onConfirm }) {
@@ -778,6 +884,104 @@ function userSheet(user = null) {
   if (!user) document.querySelector('.sheet input[name="name"]').focus();
 }
 
+// ---- Pop-up: oefening kiezen uit de bibliotheek ----
+function librarySheet() {
+  const counts = {};
+  for (const e of ui.draft.exercises) if (e.libraryId) counts[e.libraryId] = (counts[e.libraryId] || 0) + 1;
+
+  const tile = (item) => `<button class="library-tile" data-action="add-library" data-id="${item.id}">
+      <img src="${esc(libraryImage(item.id))}" alt="" />
+      <strong>${esc(item.name)}</strong>
+      <span class="tile-count" ${counts[item.id] ? '' : 'hidden'}>${counts[item.id] || ''}×</span>
+    </button>`;
+
+  openSheet(`
+    <h2 class="sheet-title">Oefening toevoegen</h2>
+    <p class="lead lead--sm">Tik op een oefening om ze toe te voegen. Je kan er meerdere na elkaar kiezen.</p>
+    <button class="button button--secondary button--wide" data-action="new-exercise">${icon.plus} Eigen oefening maken</button>
+    ${LIBRARY_GROUPS.map(
+      (group) => `<h3 class="eyebrow section-gap">${esc(group)}</h3>
+        <div class="library-grid">${LIBRARY.filter((item) => item.group === group).map(tile).join('')}</div>`
+    ).join('')}
+    <div class="sheet-footer"><button class="button button--primary button--wide" data-action="sheet-close">Klaar</button></div>`);
+}
+
+// ---- Pop-up: één oefening bewerken (of een eigen oefening maken) ----
+let exerciseEdit = null; // { id, imageId, libraryId, newImage } van de oefening in de pop-up
+
+function exerciseSheet(exercise = null) {
+  openSheet(`
+    <form data-form="exercise">
+      <h2 class="sheet-title">${exercise ? 'Oefening bewerken' : 'Eigen oefening'}</h2>
+      <label class="textfield">
+        <span>Naam</span>
+        <input name="name" type="text" maxlength="40" required placeholder="Bijvoorbeeld: Squats" value="${exercise ? esc(exercise.name) : ''}" autocomplete="off" />
+      </label>
+      <label class="textfield">
+        <span>Uitleg <em>(optioneel)</em></span>
+        <textarea name="note" maxlength="400" rows="3" placeholder="Waar moet je op letten?">${exercise ? esc(exercise.note) : ''}</textarea>
+      </label>
+      <div class="textfield">
+        <span>Afbeelding <em>(optioneel)</em></span>
+        <div id="exerciseImage"></div>
+      </div>
+      <label class="textfield">
+        <span>Filmpje <em>(optioneel)</em></span>
+        <input name="video" type="text" inputmode="url" maxlength="300" placeholder="Plak hier een link, bv. van YouTube" value="${exercise ? esc(exercise.video || '') : ''}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      </label>
+      <div class="sheet-buttons">
+        <button class="button button--primary button--wide" type="submit">${exercise ? 'Opslaan' : 'Toevoegen'}</button>
+        <button class="button button--secondary button--wide" type="button" data-action="sheet-close">Annuleren</button>
+      </div>
+      ${exercise ? `<button class="link link--danger" type="button" data-action="delete-exercise">${icon.trash} Oefening verwijderen</button>` : ''}
+    </form>`);
+  // Na openSheet, want die maakt eerst alles leeg.
+  exerciseEdit = { id: exercise?.id || null, imageId: exercise?.imageId || null, libraryId: exercise?.libraryId || null, newImage: null };
+  refreshExerciseImage();
+}
+
+// Toont in de pop-up de huidige afbeelding, of een knop om er een toe te voegen.
+function refreshExerciseImage() {
+  const box = document.querySelector('#exerciseImage');
+  if (!box || !exerciseEdit) return;
+  const photo = exerciseEdit.newImage || images.get(exerciseEdit.imageId);
+  const src = photo || libraryImage(exerciseEdit.libraryId);
+  box.innerHTML = src
+    ? `<img class="image-preview" src="${esc(src)}" alt="Afbeelding van de oefening" />
+       <div class="image-actions">
+         <button type="button" class="link" data-action="pick-image">${icon.image} ${photo ? 'Andere foto' : 'Eigen foto gebruiken'}</button>
+         <button type="button" class="link link--danger" data-action="remove-image">${photo ? 'Foto verwijderen' : 'Tekening verwijderen'}</button>
+       </div>`
+    : `<button type="button" class="image-add" data-action="pick-image">
+         ${icon.image}
+         <strong>Foto toevoegen</strong>
+         <small>Maak een foto of kies er een uit je bibliotheek</small>
+       </button>`;
+}
+
+// Onzichtbaar veld waarmee je een foto kiest of maakt.
+const imagePicker = document.createElement('input');
+imagePicker.type = 'file';
+imagePicker.accept = 'image/*';
+imagePicker.className = 'file-picker';
+imagePicker.tabIndex = -1;
+imagePicker.setAttribute('aria-hidden', 'true');
+document.body.append(imagePicker);
+
+imagePicker.addEventListener('change', async () => {
+  const file = imagePicker.files[0];
+  imagePicker.value = '';
+  if (!file || !exerciseEdit) return;
+  try {
+    const dataUrl = await shrinkImage(file);
+    if (!exerciseEdit) return; // pop-up intussen gesloten
+    exerciseEdit.newImage = dataUrl;
+    refreshExerciseImage();
+  } catch (err) {
+    toast('Deze afbeelding kon niet gelezen worden');
+  }
+});
+
 let toastTimer = null;
 function toast(text) {
   document.querySelector('.toast')?.remove();
@@ -802,7 +1006,7 @@ async function exportData() {
   const today = new Date();
   const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const name = `tabata-reservekopie-${date}.json`;
-  const json = JSON.stringify(store.exportData(), null, 2);
+  const json = JSON.stringify({ ...store.exportData(), images: images.pick(store.imageIds()) }, null, 2);
   const file = new File([json], name, { type: 'application/json' });
 
   if (navigator.canShare?.({ files: [file] })) {
@@ -900,7 +1104,9 @@ const actions = {
     go('edit');
   },
   'edit-workout'(el) {
-    ui.draft = { ...store.getWorkout(el.dataset.id) };
+    const workout = store.getWorkout(el.dataset.id);
+    // Een kopie maken, zodat "Annuleren" de echte training ongemoeid laat.
+    ui.draft = { ...workout, exercises: (workout.exercises || []).map((e) => ({ ...e })) };
     go('edit');
   },
   'cancel-edit'() {
@@ -924,6 +1130,7 @@ const actions = {
   'duplicate-workout'() {
     const { id, createdAt, ...copy } = ui.draft;
     copy.name = `${copy.name.trim() || 'Mijn training'} (kopie)`;
+    copy.exercises = (copy.exercises || []).map((e) => ({ ...e, id: newId() }));
     store.saveWorkout(copy);
     ui.draft = null;
     go('home');
@@ -945,6 +1152,50 @@ const actions = {
   },
   'start-workout'(el) {
     startRun(store.getWorkout(el.dataset.id));
+  },
+
+  // ---- Oefeningen in een training ----
+  'open-library': () => librarySheet(),
+  'add-library'(el) {
+    ui.draft.exercises.push(exerciseFromLibrary(el.dataset.id));
+    refreshEditor();
+    // Op de tegel tonen hoe vaak deze oefening in de training zit.
+    const count = ui.draft.exercises.filter((e) => e.libraryId === el.dataset.id).length;
+    const badge = el.querySelector('.tile-count');
+    badge.textContent = `${count}×`;
+    badge.hidden = false;
+  },
+  'new-exercise': () => exerciseSheet(),
+  'edit-exercise'(el) {
+    exerciseSheet(ui.draft.exercises.find((e) => e.id === el.dataset.id));
+  },
+  'move-exercise'(el) {
+    const list = ui.draft.exercises;
+    const from = list.findIndex((e) => e.id === el.dataset.id);
+    const to = from + Number(el.dataset.dir);
+    if (from < 0 || to < 0 || to >= list.length) return;
+    [list[from], list[to]] = [list[to], list[from]];
+    refreshExercises();
+  },
+  'delete-exercise'() {
+    ui.draft.exercises = ui.draft.exercises.filter((e) => e.id !== exerciseEdit.id);
+    closeSheet();
+    refreshEditor();
+  },
+  'match-rounds'() {
+    ui.draft.rounds = Math.min(99, ui.draft.exercises.length);
+    refreshEditor();
+  },
+  'pick-image': () => imagePicker.click(),
+  'remove-image'() {
+    // Eerst de eigen foto weghalen; is er geen, dan de tekening.
+    if (exerciseEdit.newImage || exerciseEdit.imageId) {
+      exerciseEdit.newImage = null;
+      exerciseEdit.imageId = null;
+    } else {
+      exerciseEdit.libraryId = null;
+    }
+    refreshExerciseImage();
   },
 
   // ---- Geschiedenis ----
@@ -1000,8 +1251,11 @@ const actions = {
   'export-data': () => exportData(),
   'import-data': () => filePicker.click(),
   'import-merge'() {
-    const added = store.importBackup(pendingBackup, 'merge');
+    const backup = pendingBackup;
+    for (const [id, dataUrl] of Object.entries(backup.images)) if (!images.has(id)) images.set(id, dataUrl);
+    const added = store.importBackup(backup, 'merge');
     closeSheet();
+    images.keepOnly(store.imageIds());
     render();
     toast(added.users + added.workouts + added.sessions ? `Toegevoegd: ${countsText(added)}` : 'Alles stond al op dit toestel');
   },
@@ -1014,6 +1268,7 @@ const actions = {
       danger: true,
       onConfirm() {
         store.importBackup(backup, 'replace');
+        for (const [id, dataUrl] of Object.entries(backup.images)) images.set(id, dataUrl);
         go('users');
         toast('Reservekopie teruggezet');
       },
@@ -1024,6 +1279,25 @@ const actions = {
   'run-toggle'() {
     run.runner.toggle();
     run.runner.tick();
+  },
+  // Tik op de kaart van een oefening: timer op pauze en de volledige uitleg tonen.
+  'run-exercise'() {
+    const exercise = run.exercise;
+    if (!exercise) return;
+    run.runner.pause();
+    run.runner.tick();
+    const src = exerciseImage(exercise);
+    openSheet(`
+      ${src ? `<img class="sheet-image" src="${esc(src)}" alt="" />` : ''}
+      <h2 class="sheet-title">${esc(exercise.name)}</h2>
+      ${exercise.note ? `<p class="lead lead--sm exercise-note">${esc(exercise.note)}</p>` : '<p class="lead lead--sm"></p>'}
+      ${exercise.video ? `<a class="button button--secondary button--wide" href="${esc(exercise.video)}" target="_blank" rel="noopener noreferrer">${icon.play} Filmpje bekijken</a>` : ''}
+      <button class="button button--primary button--wide" data-action="run-resume">Verder trainen</button>`);
+  },
+  'run-resume'() {
+    closeSheet();
+    run?.runner.resume();
+    run?.runner.tick();
   },
   'run-next': () => run.runner.next(),
   'run-prev': () => run.runner.previous(),
@@ -1073,6 +1347,33 @@ document.addEventListener('click', (event) => {
 });
 
 // Formulier van de gebruikers-pop-up.
+// Formulier van de oefening-pop-up.
+document.addEventListener('submit', (event) => {
+  const form = event.target.closest('[data-form="exercise"]');
+  if (!form || !exerciseEdit || !ui.draft) return;
+  event.preventDefault();
+  const values = new FormData(form);
+  const name = String(values.get('name')).trim();
+  if (!name) return;
+  const typedVideo = String(values.get('video')).trim();
+  const video = cleanUrl(typedVideo);
+  if (typedVideo && !video) return toast('Deze link is niet geldig');
+
+  // Een nieuw gekozen foto nu pas echt bewaren.
+  let imageId = exerciseEdit.imageId;
+  if (exerciseEdit.newImage) {
+    imageId = newId();
+    images.set(imageId, exerciseEdit.newImage);
+  }
+
+  const fields = { name, note: String(values.get('note')).trim().slice(0, 400), imageId, libraryId: exerciseEdit.libraryId, video };
+  const existing = ui.draft.exercises.find((e) => e.id === exerciseEdit.id);
+  if (existing) Object.assign(existing, fields);
+  else ui.draft.exercises.push({ id: newId(), ...fields });
+  closeSheet();
+  refreshEditor();
+});
+
 document.addEventListener('submit', (event) => {
   const form = event.target.closest('[data-form="user"]');
   if (!form) return;
@@ -1134,8 +1435,11 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-ui.view = store.activeUser() ? 'home' : 'users';
-render();
+// Eerst de foto's van oefeningen laden, dan het eerste scherm tonen.
+images.init().then(() => {
+  ui.view = store.activeUser() ? 'home' : 'users';
+  go(ui.view);
+});
 
 // Onthoud welke versie geladen is (en toon ze op het profielscherm).
 fetchVersion().then((version) => {

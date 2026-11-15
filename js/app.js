@@ -374,7 +374,13 @@ function viewProfile(user) {
     <h2 class="eyebrow section-gap">Geluid</h2>
     <div class="list">
       ${toggle('sound', 'Geluidssignalen', 'Piepjes bij 3, 2, 1 en bij elke nieuwe fase')}
-      ${toggle('voice', 'Gesproken aanwijzingen', 'Een stem zegt "Werk" en "Rust"')}
+      ${toggle('halfway', 'Signaal halverwege', 'Twee korte piepjes op de helft van elke werkfase')}
+      ${sound.canPlayWhenSilent ? toggle('silentMode', 'Ook in stille modus', 'Piepjes blijven hoorbaar als je iPhone op stil staat. Andere muziek kan hierdoor pauzeren.') : ''}
+      ${toggle('voice', 'Gesproken aanwijzingen', 'Een stem zegt de oefening, "Rust" en "Halverwege"')}
+      <button class="row" data-action="test-sound">
+        <span class="avatar avatar--ghost avatar--plain">${icon.soundOn}</span>
+        <span class="row-body"><strong>Geluid testen</strong><small>Speelt de piepjes af, zodat je hoort of het werkt</small></span>
+      </button>
     </div>
 
     <h2 class="eyebrow section-gap">Gebruikers</h2>
@@ -593,6 +599,15 @@ function saveDraft() {
 
 // ============ 4. De lopende timer ============
 
+// Geeft de instellingen door aan het geluid.
+function applySoundSettings() {
+  const settings = store.settings();
+  sound.enabled = settings.sound;
+  sound.voice = settings.voice;
+  sound.playWhenSilent = settings.silentMode;
+  sound.applySession();
+}
+
 let run = null; // de training die nu loopt (of null)
 let wakeLock = null;
 
@@ -620,8 +635,7 @@ function startRun(workout) {
   const phases = buildPhases(workout);
   if (!phases.length) return;
 
-  sound.enabled = store.settings().sound;
-  sound.voice = store.settings().voice;
+  applySoundSettings();
   sound.unlock();
   keepScreenOn(true);
 
@@ -737,6 +751,9 @@ function startRun(workout) {
     onCountdown() {
       sound.countdown();
     },
+    onHalfway(phase) {
+      if (phase.type === 'work' && store.settings().halfway) sound.halfway();
+    },
     onTick(r) {
       const seconds = Math.ceil(r.remainingMs / 1000);
       setText('time', formatTime(seconds));
@@ -824,9 +841,14 @@ document.addEventListener('visibilitychange', () => {
     keepScreenOn(true);
     run.runner.tick();
   }
-  // Staat er intussen een nieuwe versie online?
-  if (document.visibilityState === 'visible') checkForUpdate();
+  if (document.visibilityState === 'visible') {
+    sound.wake(); // de iPhone legt het geluid stil als de app naar de achtergrond gaat
+    checkForUpdate(); // staat er intussen een nieuwe versie online?
+  }
 });
+
+// Bij elke tik het geluid weer wakker maken, mocht de iPhone het hebben stilgelegd.
+document.addEventListener('pointerdown', () => sound.wake(), true);
 
 // ============ 5. Pop-ups ("sheets") en meldingen ============
 
@@ -1234,6 +1256,28 @@ const actions = {
     const key = el.dataset.key;
     store.setSetting(key, !store.settings()[key]);
     el.setAttribute('aria-checked', store.settings()[key]);
+    applySoundSettings();
+  },
+  'test-sound'() {
+    if (!store.settings().sound) return toast('Zet eerst "Geluidssignalen" aan');
+    applySoundSettings();
+    sound.unlock();
+    sound.test();
+    if (document.querySelector('.sheet-backdrop')) return; // "Nog eens afspelen": pop-up staat al open
+    const silentTip = !sound.canPlayWhenSilent
+      ? 'Zet de stille modus van je iPhone uit (het schuifje of de knop aan de zijkant).'
+      : store.settings().silentMode
+        ? 'Sluit de app volledig af en open ze opnieuw. Soms heeft de iPhone dat nodig na een wijziging.'
+        : 'Zet hierboven "Ook in stille modus" aan, of zet de stille modus van je iPhone uit.';
+    openSheet(`
+      <h2 class="sheet-title">Geluid testen</h2>
+      <p class="lead lead--sm">Je hoort nu drie korte piepjes en daarna een lange. Hoor je niets?</p>
+      <ol class="steps">
+        <li>Zet het volume hoger met de knoppen aan de zijkant van je iPhone.</li>
+        <li>${silentTip}</li>
+      </ol>
+      <button class="button button--primary button--wide" data-action="test-sound">Nog eens afspelen</button>
+      <button class="button button--secondary button--wide" data-action="sheet-close">Sluiten</button>`);
   },
 
   // ---- App vernieuwen ----
@@ -1434,6 +1478,8 @@ document.addEventListener('keydown', (event) => {
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
+
+applySoundSettings();
 
 // Eerst de foto's van oefeningen laden, dan het eerste scherm tonen.
 images.init().then(() => {

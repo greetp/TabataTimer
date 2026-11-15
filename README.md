@@ -50,7 +50,10 @@ Een iPhone kan de app alleen installeren vanaf een adres met `https`. GitHub Pag
 
 Goed om te weten:
 
-- Zet de **stille modus** van je iPhone uit als je de piepjes wil horen.
+- **Geluid**: onder **Profiel → Geluid** staat de knop **Geluid testen**. Hoor je niets, zet dan het volume hoger.
+  Met **Ook in stille modus** blijven de piepjes hoorbaar als je iPhone op stil staat; andere muziek kan daardoor
+  pauzeren. Zet je dat uit, dan mengen de piepjes met je muziek, maar hoor je ze niet in stille modus.
+- **Signaal halverwege**: twee korte piepjes op de helft van elke werkfase. Aan of uit te zetten onder **Profiel → Geluid**.
 - Hou de app **open** tijdens je training. Het scherm blijft vanzelf aan, maar een web-app kan geen geluid
   maken als het toestel vergrendeld is.
 - De gegevens staan **alleen op dat toestel**. Wis je de websitegegevens van Safari of verwijder je de app,
@@ -119,5 +122,5 @@ De uitleg bij een oefening aanpassen kan gewoon in `js/library.js`; daarvoor hoe
 
 - **Kleuren wijzigen** → bovenaan in `css/app.css`, onder `:root`.
 - **Voorbeeldtrainingen voor nieuwe gebruikers** → `STARTER_WORKOUTS` in `js/store.js`.
-- **Andere piepjes** → de functies `countdown`, `work`, `rest` en `finish` in `js/sound.js`.
+- **Andere piepjes** → de functies `countdown`, `halfway`, `work`, `rest` en `finish` in `js/sound.js`.
 - **Kleuren van de avatars** → `AVATAR_COLORS` in `js/store.js`.

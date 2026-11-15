@@ -16,7 +16,7 @@ const emptyData = () => ({
   activeUserId: null,
   workouts: [],
   sessions: [],
-  settings: { sound: true, voice: false },
+  settings: { sound: true, halfway: true, silentMode: true, voice: false },
 });
 
 let data = load();
@@ -178,7 +178,12 @@ export function readBackup(raw) {
     workouts,
     sessions,
     images,
-    settings: { sound: raw.settings?.sound !== false, voice: raw.settings?.voice === true },
+    settings: {
+      sound: raw.settings?.sound !== false,
+      halfway: raw.settings?.halfway !== false,
+      silentMode: raw.settings?.silentMode !== false,
+      voice: raw.settings?.voice === true,
+    },
     exportedAt: cleanNumber(raw.exportedAt, 0, 9e15, 0),
   };
 }

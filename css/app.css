@@ -1822,3 +1822,15 @@ a.button--secondary {
 a.button--wide {
   margin-bottom: 0.65rem;
 }
+
+/* ---- Genummerde stappen in een pop-up ---- */
+.steps {
+  margin: 0 0 1.4rem;
+  padding-left: 1.3rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.steps li + li {
+  margin-top: 0.5rem;
+}

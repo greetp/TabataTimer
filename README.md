@@ -15,6 +15,8 @@ De app is een **web-app (PWA)**: je zet ze op het beginscherm van je iPhone en z
 - **Geschiedenis** – alle afgewerkte sessies per dag, voor jezelf of voor iedereen (gegroepeerd per gebruiker).
   Tik op een sessie om de naam, het tijdstip of de duur te corrigeren. Je kan ook zelf een sessie toevoegen
   en de sessies van deze week of alle sessies wissen.
+- **Delen** – stuur een training door via WhatsApp, Berichten of mail. De ontvanger krijgt een bericht met de uitleg
+  en een link waarin de hele training zit.
 - **Offline** – alles wordt op het toestel zelf bewaard. Er is geen account of server nodig.
 - **Reservekopie** – exporteer alle gegevens naar een bestand en zet ze later terug, ook op een ander toestel.
 
@@ -61,6 +63,26 @@ Goed om te weten:
 - De gegevens staan **alleen op dat toestel**. Wis je de websitegegevens van Safari of verwijder je de app,
   dan zijn ook de profielen weg. Maak daarom af en toe een reservekopie (zie hieronder).
 
+## Een training delen
+
+**Versturen**
+
+1. Open de training en tik onderaan op **Delen**.
+2. Tik op **Delen via…** en kies WhatsApp, Berichten of mail.
+
+**Ontvangen (app op het beginscherm)**
+
+1. Hou het bericht ingedrukt en kies **Kopieer**.
+2. Open de app en tik bij **Trainingen** op **Training ontvangen**.
+3. Tik op **Toevoegen**.
+
+Goed om te weten:
+
+- Een link in een bericht opent op een iPhone altijd in Safari, niet in de app op het beginscherm. Daarom is het
+  kopiëren nodig. Wie de app nog niet heeft, kan gewoon op de link tikken.
+- Eigen foto's gaan niet mee, want die zijn te groot voor een link. Tekeningen uit de bibliotheek en links naar
+  filmpjes gaan wel mee.
+
 ## Reservekopie maken en terugzetten
 
 **Exporteren**
@@ -91,6 +113,7 @@ Goed om te weten:
 | `tools/teken-oefeningen.mjs` | Het script dat de tekeningen maakt. De app zelf heeft het niet nodig. |
 | `js/timer.js` | De "motor": bouwt de fases op en houdt de tijd bij. |
 | `js/sound.js` | De piepjes en de (optionele) gesproken stem. |
+| `js/share.js` | Zet een training om naar een link en terug, om ze te delen. |
 | `sw.js` | Service worker: zorgt dat de app zonder internet werkt. |
 | `manifest.webmanifest` | Naam, icoon en kleuren voor op het beginscherm. |
 | `version.json` | Het versienummer van de app. |

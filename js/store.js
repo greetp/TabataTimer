@@ -88,6 +88,32 @@ function uniqueById(items) {
 // Maakt van eender wat een lijst van objecten (of een lege lijst).
 const list = (value) => (Array.isArray(value) ? value.filter((item) => item && typeof item === 'object') : []);
 
+// Kijkt een training na die van buitenaf komt (een gedeelde link).
+// Geeft alleen de velden van de training terug, zonder id's: die krijgt ze bij het toevoegen.
+export function sanitizeWorkout(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    name: cleanText(raw.name, 40) || 'Gedeelde training',
+    group: cleanText(raw.group, 30),
+    prepare: cleanNumber(raw.prepare, 0, 3600, 10),
+    work: cleanNumber(raw.work, 1, 3600, 20),
+    rest: cleanNumber(raw.rest, 0, 3600, 10),
+    rounds: cleanNumber(raw.rounds, 1, 99, 8),
+    sets: cleanNumber(raw.sets, 1, 20, 1),
+    setRest: cleanNumber(raw.setRest, 0, 3600, 60),
+    cooldown: cleanNumber(raw.cooldown, 0, 3600, 0),
+    exercises: list(raw.exercises)
+      .filter((e) => cleanText(e.name, 40))
+      .slice(0, 60)
+      .map((e) => ({
+        name: cleanText(e.name, 40),
+        note: cleanText(e.note, 400),
+        libraryId: libraryItem(e.libraryId) ? e.libraryId : null,
+        video: cleanUrl(e.video),
+      })),
+  };
+}
+
 // De oefeningen van één training nakijken.
 const cleanExercises = (value) =>
   uniqueById(

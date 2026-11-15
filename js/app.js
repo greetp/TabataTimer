@@ -15,6 +15,7 @@ import { images, shrinkImage } from './images.js';
 import { LIBRARY, LIBRARY_GROUPS, libraryImage } from './library.js';
 import { buildPhases, totalSeconds, formatTime, Runner, PHASE_LABELS } from './timer.js';
 import { sound } from './sound.js';
+import { encodeWorkout, decodeWorkout, shareUrl, shareMessage } from './share.js';
 
 const app = document.getElementById('app');
 
@@ -257,6 +258,7 @@ function viewHome(user) {
     }
 
     <button class="button button--secondary button--wide" data-action="new-workout">${icon.plus} Nieuwe training</button>
+    <button class="button button--secondary button--wide" data-action="receive-training">${icon.importFile} Training ontvangen</button>
   </main>
   ${tabBar('home')}`;
 }
@@ -499,6 +501,7 @@ function viewEdit(user) {
     ${
       d.id
         ? `<div class="edit-actions">
+            <button class="link" data-action="share-workout">${icon.exportFile} Delen</button>
             <button class="link" data-action="duplicate-workout">${icon.copy} Dupliceren</button>
             <button class="link link--danger" data-action="delete-workout">${icon.trash} Verwijderen</button>
           </div>`
@@ -878,6 +881,8 @@ function closeSheet() {
   sheetConfirm = null;
   pendingBackup = null;
   exerciseEdit = null;
+  pendingMessage = null;
+  pendingShared = null;
 }
 
 function confirmSheet({ title, text, label, danger = false, cancel = 'Annuleren', onConfirm }) {
@@ -912,6 +917,103 @@ function userSheet(user = null) {
     </form>`);
   if (!user) document.querySelector('.sheet input[name="name"]').focus();
 }
+
+// ---- Een training delen ----
+let pendingMessage = null; // het bericht dat klaarstaat om te versturen
+let pendingShared = null; // een ontvangen training, tot je ze toevoegt
+let waitingShared = null; // een training uit een link, als er nog geen profiel is
+
+// Stap 1: het bericht klaarmaken en tonen. Het versturen zelf gebeurt bij de tik op "Delen via…".
+async function shareSheet() {
+  const user = store.activeUser();
+  const workout = { ...ui.draft, name: ui.draft.name.trim() || 'Mijn training' };
+  const url = shareUrl(await encodeWorkout(workout, user.name));
+  const summary = `${workoutSummary(workout)}, ${formatTime(totalSeconds(workout))} min`;
+  const message = shareMessage({ name: workout.name, summary, from: user.name, url });
+  const hasPhotos = (workout.exercises || []).some((e) => e.imageId);
+
+  openSheet(`
+    <h2 class="sheet-title">Training delen</h2>
+    <p class="lead lead--sm">De ontvanger krijgt dit bericht, met de uitleg om de training toe te voegen.${
+      hasPhotos ? ' Eigen foto\'s gaan niet mee: die oefeningen komen aan zonder foto.' : ''
+    }</p>
+    <div class="message-preview">${esc(message.replace(url, 'https://… (de link met de training)'))}</div>
+    <button class="button button--primary button--wide" data-action="share-send">${icon.exportFile} Delen via…</button>
+    <button class="button button--secondary button--wide" data-action="share-copy">${icon.copy} Bericht kopiëren</button>
+    <button class="link" data-action="sheet-close">Sluiten</button>`);
+  pendingMessage = message; // na openSheet, want die maakt eerst alles leeg
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    // Oudere manier, voor toestellen waar het klembord niet rechtstreeks mag.
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.className = 'file-picker';
+    document.body.append(field);
+    field.select();
+    const ok = document.execCommand('copy');
+    field.remove();
+    return ok;
+  }
+}
+
+// ---- Een gedeelde training ontvangen ----
+
+// Toont de ontvangen training, met de knop om ze toe te voegen.
+function sharedSheet(shared, fromLink = false) {
+  const user = store.activeUser();
+  const w = shared.workout;
+  const names = w.exercises.map((e) => e.name);
+  const inBrowser = !(navigator.standalone || window.matchMedia('(display-mode: standalone)').matches);
+  openSheet(`
+    <p class="eyebrow">${shared.from ? `Gedeeld door ${esc(shared.from)}` : 'Gedeelde training'}</p>
+    <h2 class="sheet-title">${esc(w.name)}</h2>
+    <p class="lead lead--sm">${workoutSummary(w)}</p>
+    <div class="shared-facts">
+      <span class="pill">${formatTime(totalSeconds(w))} min</span>
+      ${w.group ? `<span class="pill pill--muted">${esc(w.group)}</span>` : ''}
+      ${names.length ? `<span class="pill pill--muted">${plural(names.length, 'oefening', 'oefeningen')}</span>` : ''}
+    </div>
+    ${names.length ? `<p class="muted shared-list">${esc(names.slice(0, 8).join(' · '))}${names.length > 8 ? ' · …' : ''}</p>` : ''}
+    <button class="button button--primary button--wide" data-action="shared-add">Toevoegen bij ${esc(user.name)}</button>
+    <button class="button button--secondary button--wide" data-action="sheet-close">Niet toevoegen</button>
+    ${
+      fromLink && inBrowser
+        ? `<p class="muted sheet-note">Gebruik je de app op je beginscherm? Kopieer dan het bericht dat je kreeg, open de app daar en tik op "Training ontvangen".</p>`
+        : ''
+    }`);
+  pendingShared = shared;
+}
+
+// Pop-up om het bericht zelf te plakken (als het klembord leeg is of niet gelezen mag worden).
+function pasteSheet() {
+  openSheet(`
+    <h2 class="sheet-title">Training ontvangen</h2>
+    <p class="lead lead--sm">Kopieer het bericht dat je kreeg en plak het hieronder.</p>
+    <label class="textfield">
+      <span>Bericht</span>
+      <textarea id="sharedText" rows="4" placeholder="Hou hier ingedrukt en kies Plak"></textarea>
+    </label>
+    <div class="sheet-buttons">
+      <button class="button button--primary button--wide" data-action="shared-read">Verder</button>
+      <button class="button button--secondary button--wide" data-action="sheet-close">Annuleren</button>
+    </div>`);
+}
+
+// Zit er een training in de link waarmee de app geopend werd? Toon ze dan.
+async function openSharedLink() {
+  if (!location.hash.includes('training=')) return;
+  const shared = await decodeWorkout(location.hash);
+  history.replaceState(null, '', location.pathname + location.search); // link opruimen, zodat herladen niet opnieuw vraagt
+  if (!shared) return toast('Deze link bevat geen geldige training');
+  if (store.activeUser()) sharedSheet(shared, true);
+  else waitingShared = shared; // eerst een profiel aanmaken; daarna tonen we de training
+}
+window.addEventListener('hashchange', openSharedLink);
 
 // Tekent het scherm opnieuw zonder terug naar boven te springen.
 function renderKeepingScroll() {
@@ -1248,6 +1350,55 @@ const actions = {
     startRun(store.getWorkout(el.dataset.id));
   },
 
+  // ---- Delen en ontvangen ----
+  'share-workout': () => shareSheet(),
+  async 'share-send'() {
+    const message = pendingMessage;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: message });
+        closeSheet();
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return; // deelvenster gesloten zonder te kiezen
+      }
+    }
+    // Geen deelvenster op dit toestel: dan kopiëren we het bericht.
+    toast((await copyText(message)) ? 'Bericht gekopieerd. Plak het in een chat of mail.' : 'Delen lukt niet op dit toestel');
+  },
+  async 'share-copy'() {
+    toast((await copyText(pendingMessage)) ? 'Bericht gekopieerd' : 'Kopiëren lukt niet op dit toestel');
+  },
+  // Eerst kijken of het gekopieerde bericht al op het klembord staat; anders zelf laten plakken.
+  async 'receive-training'() {
+    let text = '';
+    try {
+      text = await navigator.clipboard.readText();
+    } catch (err) {
+      /* klembord niet beschikbaar of niet toegestaan */
+    }
+    const shared = text ? await decodeWorkout(text) : null;
+    if (shared) sharedSheet(shared);
+    else pasteSheet();
+  },
+  async 'shared-read'() {
+    const shared = await decodeWorkout(document.querySelector('#sharedText').value);
+    if (shared) sharedSheet(shared);
+    else toast('In dit bericht zit geen training');
+  },
+  'shared-add'() {
+    const { workout } = pendingShared;
+    store.saveWorkout({
+      ...workout,
+      userId: store.activeUser().id,
+      exercises: workout.exercises.map((e) => ({ id: newId(), imageId: null, ...e })),
+    });
+    closeSheet();
+    ui.draft = null;
+    go('home');
+    toast('Training toegevoegd');
+  },
+
   // ---- Oefeningen in een training ----
   'open-library': () => librarySheet(),
   'add-library'(el) {
@@ -1543,6 +1694,11 @@ document.addEventListener('submit', (event) => {
   closeSheet();
   if (ui.view === 'users') ui.view = 'home';
   render();
+  // Kwam je binnen via een gedeelde link? Dan nu de training tonen.
+  if (waitingShared) {
+    sharedSheet(waitingShared, true);
+    waitingShared = null;
+  }
 });
 
 // Plus/min: één tik = één stap; ingedrukt houden = snel doortellen.
@@ -1597,6 +1753,7 @@ applySoundSettings();
 images.init().then(() => {
   ui.view = store.activeUser() ? 'home' : 'users';
   go(ui.view);
+  openSharedLink();
 });
 
 // Onthoud welke versie geladen is (en toon ze op het profielscherm).

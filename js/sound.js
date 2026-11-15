@@ -49,9 +49,10 @@ export const sound = {
   },
 
   // Start van een werkfase: hoog en duidelijk.
-  work() {
+  // text = wat de stem zegt (de naam van de oefening, of gewoon "Werk").
+  work(text = 'Werk') {
     if (this.enabled) tone(1175, 0, 0.5, 0.7);
-    this.say('Werk');
+    this.say(text);
   },
 
   // Start van een rustfase: lager.

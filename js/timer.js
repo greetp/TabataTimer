@@ -17,15 +17,20 @@ export const PHASE_LABELS = {
 // Maakt de volgorde van fases voor één training.
 export function buildPhases(w) {
   const phases = [];
-  const add = (type, duration, round, set) => {
-    if (duration > 0) phases.push({ type, duration, round, set });
+  const add = (type, duration, round, set, exercise = null) => {
+    if (duration > 0) phases.push({ type, duration, round, set, exercise });
   };
+
+  // Welke oefening hoort bij welke ronde? Ronde 1 = oefening 1, enzovoort.
+  // Zijn er minder oefeningen dan rondes, dan beginnen we opnieuw bij de eerste.
+  const exercises = w.exercises || [];
+  const exerciseFor = (round) => (exercises.length ? exercises[(round - 1) % exercises.length] : null);
 
   add('prepare', w.prepare, 1, 1);
 
   for (let set = 1; set <= w.sets; set++) {
     for (let round = 1; round <= w.rounds; round++) {
-      add('work', w.work, round, set);
+      add('work', w.work, round, set, exerciseFor(round));
 
       const lastRound = round === w.rounds;
       const lastSet = set === w.sets;

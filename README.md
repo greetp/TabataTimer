@@ -13,6 +13,8 @@ De app is een **web-app (PWA)**: je zet ze op het beginscherm van je iPhone en z
   oefening met naam, uitleg, een eigen foto en een link naar een filmpje. De timer toont bij elke ronde wat je moet doen.
 - **Duidelijke timer** – grote cijfers, een kleur per fase, pauze / vorige / volgende, piepjes op 3-2-1.
 - **Geschiedenis** – alle afgewerkte sessies per dag, voor jezelf of voor iedereen (gegroepeerd per gebruiker).
+  Tik op een sessie om de naam, het tijdstip of de duur te corrigeren. Je kan ook zelf een sessie toevoegen
+  en de sessies van deze week of alle sessies wissen.
 - **Offline** – alles wordt op het toestel zelf bewaard. Er is geen account of server nodig.
 - **Reservekopie** – exporteer alle gegevens naar een bestand en zet ze later terug, ook op een ander toestel.
 

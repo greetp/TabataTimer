@@ -293,8 +293,20 @@ export const store = {
     save();
   },
 
+  updateSession(id, changes) {
+    const session = this.getSession(id);
+    if (session) Object.assign(session, changes);
+    save();
+  },
+
   deleteSession(id) {
     data.sessions = data.sessions.filter((s) => s.id !== id);
+    save();
+  },
+
+  // Wist de sessies van één gebruiker. Met "since" alleen de sessies vanaf dat moment.
+  deleteSessionsFor(userId, since = 0) {
+    data.sessions = data.sessions.filter((s) => s.userId !== userId || s.at < since);
     save();
   },
 

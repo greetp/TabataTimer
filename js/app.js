@@ -85,6 +85,7 @@ const icon = {
   soundOff: line('<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4zM16 9.5l5 5M21 9.5l-5 5"/>'),
   image: line('<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/>'),
   info: line('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.8v.2"/>'),
+  chevron: line('<path d="M9 5l7 7-7 7"/>'),
   up: line('<path d="M6 14.5l6-6 6 6"/>'),
   down: line('<path d="M6 9.5l6 6 6-6"/>'),
   refresh: line('<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/>'),
@@ -243,10 +244,11 @@ function viewHome(user) {
       <button class="avatar-btn" data-action="switch-user" aria-label="Wissel van gebruiker">${avatar(user)}</button>
     </header>
 
-    <div class="weekcard">
-      <div><strong>${week.weekCount}</strong><span>${week.weekCount === 1 ? 'sessie' : 'sessies'} deze week</span></div>
-      <div><strong>${longTime(week.weekSeconds)}</strong><span>in beweging</span></div>
-    </div>
+    <button class="weekcard" data-action="go" data-view="history" aria-label="Bekijk of corrigeer je sessies">
+      <span class="weekcard-cell"><strong>${week.weekCount}</strong><small>${week.weekCount === 1 ? 'sessie' : 'sessies'} deze week</small></span>
+      <span class="weekcard-cell"><strong>${longTime(week.weekSeconds)}</strong><small>in beweging</small></span>
+      <span class="weekcard-more">${icon.chevron}</span>
+    </button>
 
     ${
       workouts.length
@@ -305,8 +307,13 @@ function viewHistory(user) {
     const sessions = store.sessionsFor(user.id);
     body =
       statTiles(stats(sessions)) +
+      `<div class="history-actions">
+        <button class="link" data-action="add-session">${icon.plus} Sessie toevoegen</button>
+        ${sessions.length ? `<button class="link link--danger" data-action="reset-history">${icon.trash} Sessies wissen</button>` : ''}
+      </div>` +
       (sessionsByDay(sessions) ||
-        `<div class="empty"><p>Nog geen sessies. Na je eerste training verschijnt ze hier.</p></div>`);
+        `<div class="empty"><p>Nog geen sessies. Na je eerste training verschijnt ze hier.</p></div>`) +
+      (sessions.length ? `<p class="muted hint">Tip: tik op een sessie om de naam, het tijdstip of de duur aan te passen.</p>` : '');
   } else {
     // Iedereen: één blok per gebruiker.
     body = store
@@ -906,6 +913,71 @@ function userSheet(user = null) {
   if (!user) document.querySelector('.sheet input[name="name"]').focus();
 }
 
+// Tekent het scherm opnieuw zonder terug naar boven te springen.
+function renderKeepingScroll() {
+  const scroll = window.scrollY;
+  render();
+  window.scrollTo(0, scroll);
+}
+
+// ---- Pop-up: een sessie aanpassen of zelf toevoegen ----
+const pad = (number) => String(number).padStart(2, '0');
+const dateValue = (time) => {
+  const d = new Date(time);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+const timeValue = (time) => {
+  const d = new Date(time);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+function sessionSheet(session = null) {
+  const user = store.activeUser();
+  const owner = session ? store.getUser(session.userId) : user;
+  const at = session ? session.at : Date.now();
+  const seconds = session ? session.seconds : 0;
+  const names = [...new Set(store.workoutsFor(owner.id).map((w) => w.name))];
+  openSheet(`
+    <form data-form="session" data-id="${session ? session.id : ''}">
+      <h2 class="sheet-title">${session ? 'Sessie aanpassen' : 'Sessie toevoegen'}</h2>
+      <p class="lead lead--sm">${
+        session
+          ? `Van ${esc(owner.name)}${session.completed ? '' : ' · voortijdig gestopt'}. Pas aan wat niet klopt.`
+          : 'Voor een training die je deed zonder de timer.'
+      }</p>
+      <label class="textfield">
+        <span>Naam</span>
+        <input name="name" type="text" maxlength="40" required list="workoutNames" placeholder="Bijvoorbeeld: Klassieke Tabata" value="${session ? esc(session.name) : esc(names[0] || '')}" autocomplete="off" />
+        <datalist id="workoutNames">${names.map((n) => `<option value="${esc(n)}"></option>`).join('')}</datalist>
+      </label>
+      <div class="field-pair">
+        <label class="textfield">
+          <span>Datum</span>
+          <input name="date" type="date" required max="${dateValue(Date.now())}" value="${dateValue(at)}" />
+        </label>
+        <label class="textfield">
+          <span>Uur</span>
+          <input name="time" type="time" required value="${timeValue(at)}" />
+        </label>
+      </div>
+      <div class="field-pair">
+        <label class="textfield">
+          <span>Minuten</span>
+          <input name="minutes" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="${Math.floor(seconds / 60)}" />
+        </label>
+        <label class="textfield">
+          <span>Seconden</span>
+          <input name="seconds" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="${seconds % 60}" />
+        </label>
+      </div>
+      <div class="sheet-buttons">
+        <button class="button button--primary button--wide" type="submit">${session ? 'Opslaan' : 'Toevoegen'}</button>
+        <button class="button button--secondary button--wide" type="button" data-action="sheet-close">Annuleren</button>
+      </div>
+      ${session ? `<button class="link link--danger" type="button" data-action="delete-session" data-id="${session.id}">${icon.trash} Sessie verwijderen</button>` : ''}
+    </form>`);
+}
+
 // ---- Pop-up: oefening kiezen uit de bibliotheek ----
 function librarySheet() {
   const counts = {};
@@ -1233,22 +1305,35 @@ const actions = {
     window.scrollTo(0, scroll);
   },
   'session-menu'(el) {
-    const s = store.getSession(el.dataset.id);
-    const owner = store.getUser(s.userId);
-    const when = new Date(s.at).toLocaleString('nl-BE', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-    confirmSheet({
-      title: esc(s.name),
-      text: `${esc(owner ? owner.name : '')} · ${when} · ${longTime(s.seconds)}${s.completed ? '' : ' (voortijdig gestopt)'}`,
-      label: 'Sessie verwijderen',
-      danger: true,
-      cancel: 'Sluiten',
-      onConfirm() {
-        store.deleteSession(s.id);
-        const scroll = window.scrollY;
-        render();
-        window.scrollTo(0, scroll);
-      },
-    });
+    sessionSheet(store.getSession(el.dataset.id));
+  },
+  'add-session': () => sessionSheet(),
+  'delete-session'(el) {
+    store.deleteSession(el.dataset.id);
+    closeSheet();
+    renderKeepingScroll();
+  },
+  // Sessies wissen: eerst kiezen wat er weg mag.
+  'reset-history'() {
+    const user = store.activeUser();
+    const sessions = store.sessionsFor(user.id);
+    const week = sessions.filter((s) => s.at >= startOfWeek()).length;
+    openSheet(`
+      <h2 class="sheet-title">Sessies wissen</h2>
+      <p class="lead lead--sm">Kies wat je wil wissen bij ${esc(user.name)}. Je trainingen blijven staan. Dit kan je niet ongedaan maken.</p>
+      ${
+        week && week < sessions.length
+          ? `<button class="button button--danger button--wide" data-action="reset-sessions" data-range="week">Deze week wissen (${plural(week, 'sessie', 'sessies')})</button>`
+          : ''
+      }
+      <button class="button button--danger button--wide" data-action="reset-sessions" data-range="all">Alles wissen (${plural(sessions.length, 'sessie', 'sessies')})</button>
+      <button class="button button--secondary button--wide" data-action="sheet-close">Annuleren</button>`);
+  },
+  'reset-sessions'(el) {
+    store.deleteSessionsFor(store.activeUser().id, el.dataset.range === 'week' ? startOfWeek() : 0);
+    closeSheet();
+    render();
+    toast('Sessies gewist');
   },
 
   // ---- Instellingen ----
@@ -1391,6 +1476,33 @@ document.addEventListener('click', (event) => {
 });
 
 // Formulier van de gebruikers-pop-up.
+// Formulier van de sessie-pop-up.
+document.addEventListener('submit', (event) => {
+  const form = event.target.closest('[data-form="session"]');
+  if (!form) return;
+  event.preventDefault();
+  const values = new FormData(form);
+  const name = String(values.get('name')).trim();
+  if (!name) return;
+
+  const at = new Date(`${values.get('date')}T${values.get('time')}`).getTime();
+  if (!Number.isFinite(at)) return toast('Vul een geldige datum en een geldig uur in');
+  if (at > Date.now() + 60000) return toast('Kies een moment dat al voorbij is');
+
+  const seconds = (parseInt(values.get('minutes'), 10) || 0) * 60 + (parseInt(values.get('seconds'), 10) || 0);
+  if (seconds <= 0) return toast('Vul in hoe lang de training duurde');
+  if (seconds > 86400) return toast('Een training kan hoogstens 24 uur duren');
+
+  if (form.dataset.id) {
+    store.updateSession(form.dataset.id, { name, at, seconds });
+  } else {
+    store.addSession({ userId: store.activeUser().id, workoutId: null, name, group: '', at, seconds, planned: seconds, completed: true });
+  }
+  closeSheet();
+  renderKeepingScroll();
+  toast(form.dataset.id ? 'Sessie aangepast' : 'Sessie toegevoegd');
+});
+
 // Formulier van de oefening-pop-up.
 document.addEventListener('submit', (event) => {
   const form = event.target.closest('[data-form="exercise"]');

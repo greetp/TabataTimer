@@ -389,20 +389,41 @@ svg {
 }
 
 .weekcard {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  width: 100%;
   margin: 1.6rem 0 0.4rem;
   border-radius: var(--radius-md);
   background: var(--petrol);
   color: #fff;
 }
 
-.weekcard > div {
+.weekcard:active {
+  background: var(--petrol-hover);
+}
+
+.weekcard-cell {
+  display: block;
   padding: 1.05rem 1.25rem;
 }
 
-.weekcard > div + div {
+.weekcard-cell + .weekcard-cell {
   border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Pijltje rechts: toont dat je op de kaart kan tikken */
+.weekcard-more {
+  position: absolute;
+  top: 50%;
+  right: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  transform: translateY(-50%);
+}
+
+.weekcard-more svg {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 .weekcard strong {
@@ -413,7 +434,8 @@ svg {
   letter-spacing: -0.035em;
 }
 
-.weekcard span {
+.weekcard small {
+  display: block;
   color: rgba(255, 255, 255, 0.78);
   font-size: 0.84rem;
 }
@@ -1833,4 +1855,35 @@ a.button--wide {
 
 .steps li + li {
   margin-top: 0.5rem;
+}
+
+/* ---- Sessies aanpassen ---- */
+.history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 1rem;
+  margin-top: 0.6rem;
+}
+
+.field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.field-pair .textfield {
+  min-width: 0;
+}
+
+/* Datum en uur: op iPhone anders te smal en gecentreerd */
+.textfield input[type='date'],
+.textfield input[type='time'] {
+  display: block;
+  min-width: 0;
+  text-align: left;
+}
+
+.textfield input::-webkit-date-and-time-value {
+  text-align: left;
 }

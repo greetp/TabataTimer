@@ -1887,3 +1887,52 @@ a.button--wide {
 .textfield input::-webkit-date-and-time-value {
   text-align: left;
 }
+
+/* ---- Training delen en ontvangen ---- */
+.screen > .button--wide + .button--wide {
+  margin-top: 0.65rem;
+}
+
+.edit-actions {
+  flex-wrap: wrap;
+  gap: 0 0.75rem;
+}
+
+.message-preview {
+  max-height: 13rem;
+  margin-bottom: 1.2rem;
+  padding: 0.9rem 1.1rem;
+  overflow-y: auto;
+  border-radius: var(--radius-sm);
+  background: var(--mint);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.sheet > .eyebrow {
+  margin-bottom: 0.6rem;
+}
+
+.shared-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: -0.6rem 0 0.9rem;
+}
+
+.shared-list {
+  margin: 0 0 1.3rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Lange meldingen mogen op twee regels */
+.toast {
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  text-align: center;
+  white-space: normal;
+}

@@ -82,7 +82,17 @@ Goed om te weten:
 | `js/sound.js` | De piepjes en de (optionele) gesproken stem. |
 | `sw.js` | Service worker: zorgt dat de app zonder internet werkt. |
 | `manifest.webmanifest` | Naam, icoon en kleuren voor op het beginscherm. |
+| `version.json` | Het versienummer van de app. |
 | `assets/` | Logo en app-iconen. |
+
+### Een nieuwe versie uitbrengen
+
+1. Doe je aanpassingen.
+2. Verhoog het nummer in `version.json` (bv. van `1.2` naar `1.3`).
+3. Zet alles op `main`. GitHub Pages publiceert de nieuwe versie vanzelf.
+
+De app op de iPhone kijkt bij het openen en telkens ze weer naar voren komt of het nummer veranderd is,
+en herlaadt zichzelf dan. Wil je niet wachten, tik dan in de app op **Profiel → App vernieuwen**.
 
 ### Vaak gevraagde aanpassingen
 

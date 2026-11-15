@@ -42,6 +42,89 @@ function save() {
 
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
+// ---------- Reservekopie: hulpfuncties ----------
+// Een bestand van buitenaf vertrouwen we niet zomaar. Deze functies
+// kijken elke waarde na en zetten ze in de juiste vorm.
+
+const BACKUP_APP = 'tabata-timer';
+
+const cleanText = (value, max) => String(value ?? '').trim().slice(0, max);
+
+const cleanNumber = (value, min, max, fallback) => {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+};
+
+const isId = (value) => typeof value === 'string' && /^[a-z0-9]{1,40}$/i.test(value);
+
+// Houdt van elk id alleen het eerste item over.
+function uniqueById(items) {
+  const seen = new Set();
+  return items.filter((item) => !seen.has(item.id) && seen.add(item.id));
+}
+
+// Leest de inhoud van een reservekopie en geeft nagekeken gegevens terug.
+// Geeft een fout als het bestand geen geldige reservekopie is.
+export function readBackup(raw) {
+  if (!raw || raw.app !== BACKUP_APP || !Array.isArray(raw.users)) throw new Error('Geen geldige reservekopie');
+  const list = (value) => (Array.isArray(value) ? value.filter((item) => item && typeof item === 'object') : []);
+
+  const users = uniqueById(
+    list(raw.users)
+      .filter((u) => isId(u.id) && cleanText(u.name, 24))
+      .map((u) => ({
+        id: u.id,
+        name: cleanText(u.name, 24),
+        color: /^#[0-9a-f]{6}$/i.test(u.color) ? u.color.toLowerCase() : AVATAR_COLORS[0],
+        createdAt: cleanNumber(u.createdAt, 0, 9e15, Date.now()),
+      }))
+  );
+  const userIds = new Set(users.map((u) => u.id));
+
+  const workouts = uniqueById(
+    list(raw.workouts)
+      .filter((w) => isId(w.id) && userIds.has(w.userId))
+      .map((w) => ({
+        id: w.id,
+        userId: w.userId,
+        name: cleanText(w.name, 40) || 'Mijn training',
+        group: cleanText(w.group, 30),
+        prepare: cleanNumber(w.prepare, 0, 3600, 10),
+        work: cleanNumber(w.work, 1, 3600, 20),
+        rest: cleanNumber(w.rest, 0, 3600, 10),
+        rounds: cleanNumber(w.rounds, 1, 99, 8),
+        sets: cleanNumber(w.sets, 1, 20, 1),
+        setRest: cleanNumber(w.setRest, 0, 3600, 60),
+        cooldown: cleanNumber(w.cooldown, 0, 3600, 0),
+        createdAt: cleanNumber(w.createdAt, 0, 9e15, Date.now()),
+      }))
+  );
+
+  const sessions = uniqueById(
+    list(raw.sessions)
+      .filter((s) => isId(s.id) && userIds.has(s.userId))
+      .map((s) => ({
+        id: s.id,
+        userId: s.userId,
+        workoutId: isId(s.workoutId) ? s.workoutId : null,
+        name: cleanText(s.name, 40) || 'Training',
+        group: cleanText(s.group, 30),
+        at: cleanNumber(s.at, 0, 9e15, Date.now()),
+        seconds: cleanNumber(s.seconds, 0, 864000, 0),
+        planned: cleanNumber(s.planned, 0, 864000, 0),
+        completed: s.completed === true,
+      }))
+  );
+
+  return {
+    users,
+    workouts,
+    sessions,
+    settings: { sound: raw.settings?.sound !== false, voice: raw.settings?.voice === true },
+    exportedAt: cleanNumber(raw.exportedAt, 0, 9e15, 0),
+  };
+}
+
 // De trainingen die elke nieuwe gebruiker als voorbeeld krijgt.
 const STARTER_WORKOUTS = [
   { name: 'Klassieke Tabata', group: 'Cardio', prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 60, cooldown: 0 },
@@ -133,5 +216,41 @@ export const store = {
   setSetting(key, value) {
     data.settings[key] = value;
     save();
+  },
+
+  // ---------- Reservekopie ----------
+
+  // Alles wat in een reservekopie-bestand komt.
+  exportData: () => ({
+    app: BACKUP_APP,
+    version: 1,
+    exportedAt: Date.now(),
+    users: data.users,
+    workouts: data.workouts,
+    sessions: data.sessions,
+    settings: data.settings,
+  }),
+
+  // Zet een (nagekeken) reservekopie terug. Geeft terug hoeveel er is toegevoegd.
+  //   mode 'replace' = alles op het toestel vervangen
+  //   mode 'merge'   = alleen toevoegen wat er nog niet staat
+  importBackup(backup, mode) {
+    if (mode === 'replace') {
+      data = { ...emptyData(), users: backup.users, workouts: backup.workouts, sessions: backup.sessions, settings: backup.settings };
+      save();
+      return { users: backup.users.length, workouts: backup.workouts.length, sessions: backup.sessions.length };
+    }
+
+    // Samenvoegen: een item met een id dat al bestaat slaan we over.
+    // Zo krijg je geen dubbels als je hetzelfde bestand twee keer importeert.
+    const added = {};
+    for (const kind of ['users', 'workouts', 'sessions']) {
+      const existing = new Set(data[kind].map((item) => item.id));
+      const fresh = backup[kind].filter((item) => !existing.has(item.id));
+      data[kind].push(...fresh);
+      added[kind] = fresh.length;
+    }
+    save();
+    return added;
   },
 };

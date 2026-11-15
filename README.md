@@ -12,6 +12,7 @@ De app is een **web-app (PWA)**: je zet ze op het beginscherm van je iPhone en z
 - **Duidelijke timer** – grote cijfers, een kleur per fase, pauze / vorige / volgende, piepjes op 3-2-1.
 - **Geschiedenis** – alle afgewerkte sessies per dag, voor jezelf of voor iedereen (gegroepeerd per gebruiker).
 - **Offline** – alles wordt op het toestel zelf bewaard. Er is geen account of server nodig.
+- **Reservekopie** – exporteer alle gegevens naar een bestand en zet ze later terug, ook op een ander toestel.
 
 ## De app lokaal bekijken
 
@@ -50,7 +51,24 @@ Goed om te weten:
 - Zet de **stille modus** van je iPhone uit als je de piepjes wil horen.
 - Hou de app **open** tijdens je training. Het scherm blijft vanzelf aan, maar een web-app kan geen geluid
   maken als het toestel vergrendeld is.
-- De gegevens staan **alleen op dat toestel**. Wis je de websitegegevens van Safari, dan zijn ook de profielen weg.
+- De gegevens staan **alleen op dat toestel**. Wis je de websitegegevens van Safari of verwijder je de app,
+  dan zijn ook de profielen weg. Maak daarom af en toe een reservekopie (zie hieronder).
+
+## Reservekopie maken en terugzetten
+
+**Exporteren**
+
+1. Ga in de app naar **Profiel**.
+2. Tik onderaan op **Gegevens exporteren**.
+3. Kies in het deelvenster waar het bestand naartoe gaat, bv. **Bewaar in Bestanden** of mail naar jezelf.
+
+**Importeren**
+
+1. Ga in de app naar **Profiel** en tik op **Gegevens importeren**.
+2. Kies het bestand `tabata-reservekopie-….json`.
+3. Kies wat er moet gebeuren:
+   - **Samenvoegen** – voegt toe wat nog niet op het toestel staat. Niets wordt gewist.
+   - **Alles vervangen** – wist alles op het toestel en zet de reservekopie in de plaats.
 
 ## Hoe zit de code in elkaar?
 

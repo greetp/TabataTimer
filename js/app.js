@@ -10,7 +10,7 @@
 //   6. Acties: wat gebeurt er bij een tik op een knop
 // ---------------------------------------------------------------
 
-import { store, AVATAR_COLORS } from './store.js';
+import { store, AVATAR_COLORS, readBackup } from './store.js';
 import { buildPhases, totalSeconds, formatTime, Runner, PHASE_LABELS } from './timer.js';
 import { sound } from './sound.js';
 
@@ -51,6 +51,8 @@ const icon = {
   user: line('<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>'),
   soundOn: line('<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4zM15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/>'),
   soundOff: line('<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4zM16 9.5l5 5M21 9.5l-5 5"/>'),
+  exportFile: line('<path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>'),
+  importFile: line('<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>'),
 };
 
 // 20 -> "20 s", 95 -> "1:35"
@@ -345,6 +347,18 @@ function viewProfile(user) {
       <button class="row" data-action="new-user">
         <span class="avatar avatar--ghost">${icon.plus}</span>
         <span class="row-body"><strong>Nieuw profiel</strong><small>Voor iemand anders die meetraint</small></span>
+      </button>
+    </div>
+
+    <h2 class="eyebrow section-gap">Reservekopie</h2>
+    <div class="list">
+      <button class="row" data-action="export-data">
+        <span class="avatar avatar--ghost avatar--plain">${icon.exportFile}</span>
+        <span class="row-body"><strong>Gegevens exporteren</strong><small>Bewaar alle profielen, trainingen en sessies in een bestand</small></span>
+      </button>
+      <button class="row" data-action="import-data">
+        <span class="avatar avatar--ghost avatar--plain">${icon.importFile}</span>
+        <span class="row-body"><strong>Gegevens importeren</strong><small>Zet een reservekopie terug op dit toestel</small></span>
       </button>
     </div>
 
@@ -686,6 +700,7 @@ function openSheet(html) {
 function closeSheet() {
   document.querySelector('.sheet-backdrop')?.remove();
   sheetConfirm = null;
+  pendingBackup = null;
 }
 
 function confirmSheet({ title, text, label, danger = false, cancel = 'Annuleren', onConfirm }) {
@@ -732,6 +747,80 @@ function toast(text) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.remove(), 2200);
 }
+
+// ---- Reservekopie: exporteren en importeren ----
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const countsText = (c) =>
+  [plural(c.users, 'profiel', 'profielen'), plural(c.workouts, 'training', 'trainingen'), plural(c.sessions, 'sessie', 'sessies')].join(', ');
+
+// Maakt een bestand van alle gegevens. Op iPhone opent het deelvenster
+// (Bewaar in Bestanden, Mail, AirDrop ...); elders wordt het gedownload.
+async function exportData() {
+  const today = new Date();
+  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const name = `tabata-reservekopie-${date}.json`;
+  const json = JSON.stringify(store.exportData(), null, 2);
+  const file = new File([json], name, { type: 'application/json' });
+
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Tabata Timer reservekopie' });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return; // deelvenster gesloten zonder te kiezen
+    }
+  }
+
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  toast('Reservekopie gedownload');
+}
+
+// Onzichtbaar veld waarmee je een bestand kiest.
+const filePicker = document.createElement('input');
+filePicker.type = 'file';
+filePicker.accept = '.json,application/json';
+filePicker.className = 'file-picker';
+filePicker.tabIndex = -1;
+filePicker.setAttribute('aria-hidden', 'true');
+document.body.append(filePicker);
+
+let pendingBackup = null; // de gekozen reservekopie, tot je beslist wat ermee gebeurt
+
+filePicker.addEventListener('change', async () => {
+  const file = filePicker.files[0];
+  filePicker.value = ''; // zodat je daarna hetzelfde bestand opnieuw kan kiezen
+  if (!file) return;
+
+  let backup;
+  try {
+    backup = readBackup(JSON.parse(await file.text()));
+  } catch (err) {
+    openSheet(`
+      <h2 class="sheet-title">Dit bestand werkt niet</h2>
+      <p class="lead lead--sm">Het is geen reservekopie van Tabata Timer. Kies een bestand dat je eerder met "Gegevens exporteren" hebt gemaakt.</p>
+      <button class="button button--primary button--wide" data-action="sheet-close">Oké</button>`);
+    return;
+  }
+
+  const when = backup.exportedAt ? ` van ${new Date(backup.exportedAt).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' })}` : '';
+  openSheet(`
+    <h2 class="sheet-title">Reservekopie terugzetten</h2>
+    <p class="lead lead--sm">Deze reservekopie${when} bevat ${countsText({ users: backup.users.length, workouts: backup.workouts.length, sessions: backup.sessions.length })}.</p>
+    <button class="button button--primary button--wide" data-action="import-merge">Samenvoegen</button>
+    <p class="muted sheet-note">Voegt toe wat nog niet op dit toestel staat. Niets wordt gewist.</p>
+    <button class="button button--secondary button--wide" data-action="import-replace">Alles vervangen</button>
+    <p class="muted sheet-note">Wist alles op dit toestel en zet de reservekopie in de plaats.</p>
+    <button class="link" data-action="sheet-close">Annuleren</button>`);
+  pendingBackup = backup; // na openSheet, want die maakt eerst alles leeg
+});
 
 // ============ 6. Acties ============
 // Elke knop heeft een data-action="...". Hieronder staat per actie wat er gebeurt.
@@ -852,6 +941,30 @@ const actions = {
     const key = el.dataset.key;
     store.setSetting(key, !store.settings()[key]);
     el.setAttribute('aria-checked', store.settings()[key]);
+  },
+
+  // ---- Reservekopie ----
+  'export-data': () => exportData(),
+  'import-data': () => filePicker.click(),
+  'import-merge'() {
+    const added = store.importBackup(pendingBackup, 'merge');
+    closeSheet();
+    render();
+    toast(added.users + added.workouts + added.sessions ? `Toegevoegd: ${countsText(added)}` : 'Alles stond al op dit toestel');
+  },
+  'import-replace'() {
+    const backup = pendingBackup;
+    confirmSheet({
+      title: 'Alles vervangen?',
+      text: 'Alle profielen, trainingen en sessies op dit toestel worden gewist en vervangen door de reservekopie. Dit kan je niet ongedaan maken.',
+      label: 'Wissen en vervangen',
+      danger: true,
+      onConfirm() {
+        store.importBackup(backup, 'replace');
+        go('users');
+        toast('Reservekopie teruggezet');
+      },
+    });
   },
 
   // ---- Timer ----

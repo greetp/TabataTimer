@@ -16,6 +16,36 @@ import { sound } from './sound.js';
 
 const app = document.getElementById('app');
 
+// ---- Versie en bijwerken ----
+// Het versienummer staat in version.json. Bij het openen onthouden we welke
+// versie geladen is. Komt de app later weer naar voren en staat er online een
+// ander nummer, dan herladen we de app zodat je de nieuwste versie krijgt.
+let loadedVersion = null; // de versie die nu draait
+let updatePending = false; // er is een nieuwe versie, maar nu herladen zou storen
+
+async function fetchVersion() {
+  try {
+    const response = await fetch('version.json', { cache: 'no-store' });
+    return response.ok ? String((await response.json()).version) : null;
+  } catch (err) {
+    return null; // geen internet
+  }
+}
+
+// Herlaadt de app, maar niet midden in een training, tijdens het bewerken of met een pop-up open.
+function reloadWhenSafe() {
+  if (run || ui.view === 'edit' || document.querySelector('.sheet-backdrop')) {
+    updatePending = true;
+    return;
+  }
+  location.reload();
+}
+
+async function checkForUpdate() {
+  const latest = await fetchVersion();
+  if (latest && loadedVersion && latest !== loadedVersion) reloadWhenSafe();
+}
+
 // Wat er nu op het scherm staat.
 const ui = {
   view: 'users', // users | home | history | profile | edit
@@ -51,6 +81,7 @@ const icon = {
   user: line('<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>'),
   soundOn: line('<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4zM15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/>'),
   soundOff: line('<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4zM16 9.5l5 5M21 9.5l-5 5"/>'),
+  refresh: line('<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/>'),
   exportFile: line('<path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>'),
   importFile: line('<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>'),
 };
@@ -119,6 +150,7 @@ function render() {
 function go(view) {
   ui.view = view;
   render();
+  if (updatePending) reloadWhenSafe(); // een uitgestelde update nu toepassen
 }
 
 function tabBar(active) {
@@ -359,6 +391,14 @@ function viewProfile(user) {
       <button class="row" data-action="import-data">
         <span class="avatar avatar--ghost avatar--plain">${icon.importFile}</span>
         <span class="row-body"><strong>Gegevens importeren</strong><small>Zet een reservekopie terug op dit toestel</small></span>
+      </button>
+    </div>
+
+    <h2 class="eyebrow section-gap">App</h2>
+    <div class="list">
+      <button class="row" data-action="refresh-app">
+        <span class="avatar avatar--ghost avatar--plain">${icon.refresh}</span>
+        <span class="row-body"><strong>App vernieuwen</strong><small>Haalt de nieuwste versie op${loadedVersion ? ` · nu versie ${esc(loadedVersion)}` : ''}</small></span>
       </button>
     </div>
 
@@ -679,6 +719,8 @@ document.addEventListener('visibilitychange', () => {
     keepScreenOn(true);
     run.runner.tick();
   }
+  // Staat er intussen een nieuwe versie online?
+  if (document.visibilityState === 'visible') checkForUpdate();
 });
 
 // ============ 5. Pop-ups ("sheets") en meldingen ============
@@ -943,6 +985,17 @@ const actions = {
     el.setAttribute('aria-checked', store.settings()[key]);
   },
 
+  // ---- App vernieuwen ----
+  async 'refresh-app'() {
+    toast('Even geduld, de app wordt vernieuwd');
+    try {
+      await (await navigator.serviceWorker?.getRegistration())?.update();
+    } catch (err) {
+      /* geen internet: we herladen gewoon de bewaarde versie */
+    }
+    location.reload();
+  },
+
   // ---- Reservekopie ----
   'export-data': () => exportData(),
   'import-data': () => filePicker.click(),
@@ -991,7 +1044,10 @@ const actions = {
       onConfirm: () => endRun(false),
     });
   },
-  'run-done': () => closeRun(),
+  'run-done'() {
+    closeRun();
+    if (updatePending) reloadWhenSafe();
+  },
   'run-again'() {
     const workout = run.workout;
     closeRun();
@@ -1080,3 +1136,9 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 
 ui.view = store.activeUser() ? 'home' : 'users';
 render();
+
+// Onthoud welke versie geladen is (en toon ze op het profielscherm).
+fetchVersion().then((version) => {
+  loadedVersion = version;
+  if (ui.view === 'profile' && !document.querySelector('.sheet-backdrop')) render();
+});

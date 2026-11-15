@@ -2,9 +2,13 @@
 // sw.js — service worker: zorgt dat de app ook zonder internet werkt.
 // Werkwijze: eerst het netwerk proberen (zo krijg je altijd de
 // nieuwste versie), en als dat niet lukt de bewaarde kopie tonen.
+//
+// Belangrijk: we vragen de bestanden op met cache: 'no-cache'.
+// Zonder dat houdt de iPhone een bestand tot 10 minuten vast en
+// zie je een nieuwe versie niet meteen.
 // ---------------------------------------------------------------
 
-const CACHE = 'tabata-timer-v2';
+const CACHE = 'tabata-timer-v3';
 
 const FILES = [
   './',
@@ -15,6 +19,7 @@ const FILES = [
   './js/timer.js',
   './js/sound.js',
   './manifest.webmanifest',
+  './version.json',
   './assets/logo-pvmt.png',
   './assets/icon-180.png',
   './assets/icon-192.png',
@@ -22,7 +27,7 @@ const FILES = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES)));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES.map((file) => new Request(file, { cache: 'reload' })))));
   self.skipWaiting();
 });
 
@@ -40,7 +45,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || new URL(request.url).origin !== location.origin) return;
 
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-cache' })
       .then((response) => {
         const copy = response.clone();
         caches.open(CACHE).then((cache) => cache.put(request, copy));

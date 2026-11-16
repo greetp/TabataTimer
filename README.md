@@ -56,6 +56,14 @@ bij Combell verwijst een DNS-record (type CNAME, naam `timer`) naar `greetp.gith
 3. Kies **Zet op beginscherm** en tik op **Voeg toe**.
 4. Open de app voortaan via het nieuwe icoon op je beginscherm.
 
+In Chrome gaat het anders:
+
+- **Chrome op een iPhone**: tik rechts van de adresbalk op het deel-icoon en kies **Toevoegen aan startscherm**.
+- **Chrome op Android**: tik rechts van de adresbalk op de drie puntjes, kies **Installeren en snelkoppeling maken**
+  en daarna **Installeren**.
+
+Dezelfde stappen staan voor gebruikers op de hulppagina (`hulp/`).
+
 Goed om te weten:
 
 - **Geluid**: onder **Profiel → Geluid** staat de knop **Geluid testen**. Hoor je niets, zet dan het volume hoger.

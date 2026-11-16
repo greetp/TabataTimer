@@ -13,13 +13,12 @@
 
 import { ART } from './library-art.js';
 
-export const LIBRARY_GROUPS = ['Benen', 'Romp', 'Armen en borst', 'Cardio'];
+export const LIBRARY_GROUPS = ['Benen', 'Romp', 'Armen en borst', 'Cardio', 'Muurpilates'];
 
 export const LIBRARY = [
   { id: 'squat', group: 'Benen', name: 'Squats', note: 'Voeten op schouderbreedte. Zak door je knieën alsof je gaat zitten en hou je rug recht.' },
   { id: 'jumpsquat', group: 'Benen', name: 'Jump squats', note: 'Zak door je knieën en spring krachtig omhoog. Land zacht en ga meteen door.' },
   { id: 'lunge', group: 'Benen', name: 'Lunges', note: 'Stap ver naar voren en zak tot beide knieën gebogen zijn. Wissel van been.' },
-  { id: 'wallsit', group: 'Benen', name: 'Muurzit', note: 'Rug tegen de muur, knieën in een rechte hoek. Blijf zo zitten.' },
   { id: 'bridge', group: 'Benen', name: 'Bruggetje', note: 'Lig op je rug met gebogen knieën. Duw je heupen omhoog en laat ze rustig zakken.' },
 
   { id: 'plank', group: 'Romp', name: 'Plank', note: 'Steun op je onderarmen en tenen. Span je buik aan en hou je lichaam recht.' },
@@ -37,6 +36,16 @@ export const LIBRARY = [
   { id: 'highknees', group: 'Cardio', name: 'Knieheffen', note: 'Loop ter plaatse en trek je knieën om de beurt hoog op.' },
   { id: 'mountainclimber', group: 'Cardio', name: 'Mountain climbers', note: 'Start in plankhouding en trek om de beurt je knieën naar je borst.' },
   { id: 'burpee', group: 'Cardio', name: 'Burpees', note: 'Zak door je knieën, spring naar plankhouding, kom terug en spring omhoog.' },
+
+  // Muurpilates: je hebt alleen een vrije muur nodig, geen toestellen.
+  { id: 'wallsit', group: 'Muurpilates', name: 'Muurzit', note: 'Rug tegen de muur, knieën in een rechte hoek. Blijf zo zitten.' },
+  { id: 'wallrolldown', group: 'Muurpilates', name: 'Afrollen tegen de muur', note: 'Sta met je rug tegen de muur, voeten een stap naar voren. Rol wervel per wervel naar beneden en kom traag weer omhoog.' },
+  { id: 'wallangel', group: 'Muurpilates', name: 'Muurengel', note: 'Rug en armen tegen de muur. Schuif je armen traag omhoog en weer omlaag, zonder dat ze de muur loslaten.' },
+  { id: 'wallpushup', group: 'Muurpilates', name: 'Push-ups tegen de muur', note: 'Handen op schouderhoogte tegen de muur, lichaam in één lijn. Buig je ellebogen en duw je weer weg.' },
+  { id: 'wallbridge', group: 'Muurpilates', name: 'Bruggetje tegen de muur', note: 'Lig op je rug met je voeten plat tegen de muur, knieën gebogen. Duw je heupen omhoog en laat ze rustig zakken.' },
+  { id: 'wallscissor', group: 'Muurpilates', name: 'Beenschaar tegen de muur', note: 'Lig op je rug met je benen recht omhoog tegen de muur. Laat om de beurt één been traag naar je toe zakken.' },
+  { id: 'wallhundred', group: 'Muurpilates', name: 'De honderd tegen de muur', note: 'Lig op je rug, voeten tegen de muur en knieën in een rechte hoek. Til hoofd en schouders op en pomp met gestrekte armen.' },
+  { id: 'wallkick', group: 'Muurpilates', name: 'Been achteruit heffen', note: 'Steun met je handen tegen de muur. Til één been gestrekt naar achteren zonder je rug hol te trekken. Wissel van been.' },
 ];
 
 const byId = new Map(LIBRARY.map((item) => [item.id, item]));

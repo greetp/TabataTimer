@@ -161,3 +161,51 @@ html {
   height: 2.6rem;
   margin: 2rem auto 0;
 }
+
+/* ---- Uitklapbare extra stappen (bv. voor een andere browser) ---- */
+.help-more {
+  margin: 0 0 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.help-more summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.2rem;
+  padding: 0.6rem 1.1rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  cursor: pointer;
+  list-style: none;
+}
+
+.help-more summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Het plusje wordt een kruisje als het blok open staat */
+.help-more summary::after {
+  content: "+";
+  flex: none;
+  color: var(--petrol);
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1;
+  transition: transform 0.2s;
+}
+
+.help-more[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.help-more .help-steps {
+  margin: 0.4rem 1.1rem 1.1rem;
+}
+
+.help-more + .help-note {
+  margin-top: 1.1rem;
+}

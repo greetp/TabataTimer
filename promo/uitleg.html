@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<title>Tabata Timer – uitlegfilmpjes</title>
+<!--
+  promo/uitleg.html — de drie korte uitlegfilmpjes van de hulppagina.
+
+  Welk filmpje je ziet, kies je in het adres:
+      ?film=installeren    de app op je beginscherm zetten
+      ?film=ontvangen      een gedeelde training toevoegen
+      ?film=vernieuwen     de nieuwste versie krijgen
+  Voeg &speel=1 toe om het in de browser te laten afspelen.
+
+  Elk filmpje bestaat uit "shots". Een shot heeft:
+    - een tekst bovenaan (zie de lijst FILMS in het script)
+    - een scherm in de telefoon (een <div class="view"> hieronder)
+  De schermen van Safari, het deelvenster en het beginscherm zijn nagetekend;
+  de schermen van de app zelf zijn echte opnames (promo/shots/hulp).
+-->
+<style>
+  :root {
+    --paper: #f7f5ef; --surface: #fffef9; --ink: #1a1b20; --ink-soft: #484b50;
+    --petrol: #174d50; --cyan: #87c7c6; --cyan-soft: #dcefed; --mint: #edf6f1; --line: rgba(26, 27, 32, 0.14);
+    --ios-bg: #f2f2f7; --ios-line: #dcdce2; --ios-grey: #8a8a8f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #000; }
+  body { font-family: "Inter", system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  svg { display: block; }
+
+  /* ---- Het beeld: 1080 x 1350 (verhouding 4:5) ---- */
+  #stage { position: relative; width: 1080px; height: 1350px; overflow: hidden; background: var(--paper); }
+  .glow { position: absolute; border-radius: 50%; filter: blur(60px); }
+  .glow--a { width: 900px; height: 900px; left: -380px; top: -420px; background: rgba(135, 199, 198, 0.55); }
+  .glow--b { width: 800px; height: 800px; right: -360px; bottom: -380px; background: rgba(135, 199, 198, 0.3); }
+
+  /* ---- De tekst bovenaan ---- */
+  .cap { position: absolute; left: 70px; right: 70px; top: 56px; height: 270px; display: flex; align-items: center; gap: 34px; opacity: 0; }
+  .cap em { display: grid; place-items: center; flex: none; width: 104px; height: 104px; border-radius: 50%; background: var(--petrol); color: #fff; font-family: "Inter Display", sans-serif; font-style: normal; font-size: 56px; font-weight: 700; }
+  .cap em svg { width: 54px; height: 54px; }
+  .cap h2 { margin: 0; font-family: "Inter Display", "Inter", sans-serif; font-size: 58px; font-weight: 700; line-height: 1.1; letter-spacing: -0.035em; }
+  .cap h2 b { color: var(--petrol); }
+  .cap p { margin: 14px 0 0; color: var(--ink-soft); font-size: 31px; line-height: 1.3; letter-spacing: -0.01em; }
+
+  /* ---- Stickers rond de telefoon (filmpje "vernieuwen") ---- */
+  .sticker { position: absolute; width: 190px; height: 190px; padding: 9px; border-radius: 40px; background: #fff; box-shadow: 0 22px 50px rgba(25, 44, 43, 0.18); opacity: 0; }
+  .sticker svg { width: 100%; height: 100%; border-radius: 32px; }
+  .sticker i { position: absolute; right: -14px; top: -14px; padding: 8px 18px; border-radius: 999px; background: var(--petrol); color: #fff; font-style: normal; font-size: 24px; font-weight: 700; }
+
+  /* ---- De telefoon ---- */
+  #phone { position: absolute; left: 540px; top: 836px; width: 528px; height: 1110px; margin: -555px 0 0 -264px; padding: 14px; border-radius: 86px; background: #15171b; box-shadow: 0 50px 110px rgba(25, 44, 43, 0.3), 0 0 0 3px rgba(255, 255, 255, 0.5) inset; transform: scale(0.88); }
+  #screen { position: relative; width: 500px; height: 1082px; overflow: hidden; border-radius: 72px; background: var(--paper); }
+  .island { position: absolute; z-index: 60; left: 50%; top: 16px; width: 150px; height: 44px; margin-left: -75px; border-radius: 999px; background: #000; }
+  .status { position: absolute; z-index: 60; left: 0; right: 0; top: 0; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 14px 46px 0 54px; font-size: 22px; font-weight: 700; color: var(--ink); }
+  .status svg { width: 86px; height: 22px; }
+  .status.is-light { color: #fff; }
+  .homebar { position: absolute; z-index: 60; left: 50%; bottom: 10px; width: 178px; height: 7px; margin-left: -89px; border-radius: 99px; background: rgba(26, 27, 32, 0.85); }
+  .homebar.is-light { background: rgba(255, 255, 255, 0.92); }
+
+  /* Elk scherm is getekend op 390 x 844 punten (zoals een iPhone) en wordt vergroot tot het telefoonscherm. */
+  .view { position: absolute; left: 0; top: 0; width: 390px; height: 844px; transform-origin: 0 0; overflow: hidden; visibility: hidden; background: var(--paper); font-size: 15px; }
+  .view > img.full { position: absolute; left: 0; top: 0; width: 390px; display: block; }
+  .view > img.tabs { position: absolute; left: 0; bottom: 0; width: 390px; height: 90px; display: block; }
+  .dim { position: absolute; inset: 0; background: rgba(6, 30, 31, 0.34); }
+
+  /* ---- Nagetekend: de balk van Safari ---- */
+  .safari { position: absolute; left: 12px; right: 12px; bottom: 26px; display: flex; align-items: center; gap: 8px; }
+  .safari .btn { display: grid; place-items: center; flex: none; width: 46px; height: 46px; border-radius: 50%; background: rgba(255, 255, 255, 0.86); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14); color: var(--ink); }
+  .safari .btn svg { width: 22px; height: 22px; }
+  .safari .address { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: 999px; background: rgba(255, 255, 255, 0.86); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14); font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .safari .address svg { width: 14px; height: 14px; color: var(--ios-grey); }
+
+  /* ---- Nagetekend: menu's en lijsten van de iPhone ---- */
+  .menu { position: absolute; width: 236px; border-radius: 18px; background: rgba(252, 252, 252, 0.97); box-shadow: 0 16px 50px rgba(0, 0, 0, 0.28); overflow: hidden; transform-origin: 90% 100%; }
+  .menu .item { display: flex; align-items: center; justify-content: space-between; height: 46px; padding: 0 16px; font-size: 16px; }
+  .menu .item + .item { border-top: 1px solid var(--ios-line); }
+  .menu .item svg { width: 20px; height: 20px; color: var(--ink-soft); }
+  .item.is-pick { background: var(--cyan-soft); color: var(--petrol); font-weight: 700; }
+  .item.is-pick svg { color: var(--petrol); }
+
+  .sharesheet { position: absolute; left: 0; right: 0; bottom: 0; height: 600px; padding: 14px 16px 0; border-radius: 22px 22px 0 0; background: var(--ios-bg); box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2); }
+  .sharesheet .grip { width: 38px; height: 5px; margin: 0 auto 14px; border-radius: 5px; background: #c9c9cf; }
+  .sharesheet .site { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--ios-line); }
+  .sharesheet .site img { width: 46px; height: 46px; border-radius: 11px; }
+  .sharesheet .site strong { display: block; font-size: 16px; }
+  .sharesheet .site small { color: var(--ios-grey); font-size: 13px; }
+  .apps { display: flex; gap: 18px; padding: 16px 4px; }
+  .apps i { display: block; width: 58px; height: 58px; border-radius: 14px; background: #d9d9df; }
+  .group { border-radius: 14px; background: #fff; overflow: hidden; }
+  .group + .group { margin-top: 12px; }
+  .group .item { display: flex; align-items: center; justify-content: space-between; height: 50px; padding: 0 16px; font-size: 16.5px; }
+  .group .item + .item { border-top: 1px solid var(--ios-line); }
+  .group .item svg { width: 22px; height: 22px; color: var(--ink-soft); }
+
+  .addsheet { position: absolute; left: 0; right: 0; top: 60px; bottom: 0; border-radius: 22px 22px 0 0; background: var(--ios-bg); }
+  .addsheet .bar { display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 18px; font-size: 16.5px; }
+  .addsheet .bar span { color: var(--ios-grey); }
+  .addsheet .bar strong { font-size: 16.5px; }
+  .addsheet .bar b { padding: 7px 14px; border-radius: 999px; background: var(--petrol); color: #fff; font-weight: 700; }
+  .addsheet .card { display: flex; align-items: center; gap: 14px; margin: 10px 16px; padding: 14px; border-radius: 14px; background: #fff; }
+  .addsheet .card img { width: 62px; height: 62px; border-radius: 14px; }
+  .addsheet .card strong { display: block; font-size: 18px; }
+  .addsheet .card small { color: var(--ios-grey); font-size: 13.5px; }
+  .addsheet .hint { margin: 14px 30px; color: var(--ios-grey); font-size: 13.5px; line-height: 1.4; }
+
+  /* ---- Nagetekend: het beginscherm ---- */
+  .homescreen { background: linear-gradient(165deg, #9fd3d1 0%, #3f8386 55%, #174d50 100%); }
+  .grid { position: absolute; left: 27px; right: 27px; top: 84px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px 22px; }
+  .app { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #fff; font-size: 12px; font-weight: 500; }
+  .app i { display: block; width: 62px; height: 62px; border-radius: 15px; background: rgba(255, 255, 255, 0.3); }
+  .app img { display: block; width: 62px; height: 62px; border-radius: 15px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); }
+  .dock { position: absolute; left: 14px; right: 14px; bottom: 26px; display: flex; justify-content: space-around; padding: 15px 8px; border-radius: 34px; background: rgba(255, 255, 255, 0.28); }
+  .dock i { display: block; width: 62px; height: 62px; border-radius: 15px; background: rgba(255, 255, 255, 0.42); }
+
+  /* ---- Nagetekend: een chatgesprek ---- */
+  .chat { background: #efeae2; }
+  .chat .top { position: absolute; left: 0; right: 0; top: 0; height: 104px; display: flex; align-items: flex-end; gap: 12px; padding: 0 16px 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .chat .top span { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--petrol); color: #fff; font-weight: 700; }
+  .chat .top strong { font-size: 17px; line-height: 40px; }
+  .bubble { position: absolute; left: 14px; top: 124px; width: 306px; padding: 12px 14px 10px; border-radius: 4px 18px 18px 18px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14); font-size: 13.6px; line-height: 1.42; transform-origin: 0 0; }
+  .bubble p { margin: 0 0 9px; }
+  .bubble a { color: #1a6f73; text-decoration: underline; overflow-wrap: anywhere; }
+  .bubble time { display: block; text-align: right; color: var(--ios-grey); font-size: 11px; }
+  .copied { position: absolute; left: 50%; bottom: 120px; margin-left: -70px; width: 140px; padding: 9px 0; border-radius: 999px; background: rgba(26, 27, 32, 0.9); color: #fff; font-size: 14px; font-weight: 600; text-align: center; }
+
+  /* ---- Extra's boven op echte opnames ---- */
+  .paste { position: absolute; left: 152px; top: 610px; width: 86px; padding: 11px 0; border-radius: 12px; background: #2b2d31; color: #fff; font-size: 15.5px; font-weight: 600; text-align: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); }
+  .paste::after { content: ""; position: absolute; left: 50%; bottom: -7px; margin-left: -8px; border: 8px solid transparent; border-top-color: #2b2d31; border-bottom: 0; }
+  .ring { position: absolute; border: 3px solid var(--petrol); border-radius: 26px; }
+  .apptoast { position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%); padding: 11px 18px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 14.4px; font-weight: 600; white-space: nowrap; }
+  .reload { position: absolute; inset: 0; display: grid; place-items: center; background: var(--paper); }
+  .reload svg { width: 64px; height: 64px; color: var(--petrol); }
+
+  /* ---- De vinger ---- */
+  #finger { position: absolute; z-index: 80; left: 0; top: 0; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; background: rgba(255, 255, 255, 0.55); border: 5px solid rgba(23, 77, 80, 0.75); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28); opacity: 0; }
+  #ripple { position: absolute; z-index: 79; left: 0; top: 0; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; border: 6px solid rgba(23, 77, 80, 0.6); opacity: 0; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="glow glow--a"></div>
+  <div class="glow glow--b"></div>
+  <div id="caps"></div>
+  <div id="stickers"></div>
+
+  <div id="phone">
+    <div id="screen">
+
+      <!-- ================= Filmpje: installeren ================= -->
+      <div class="view" data-film="installeren" data-shot="safari">
+        <img class="full" src="shots/hulp/welkom.jpg" alt="" />
+        <div class="safari">
+          <span class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span>
+          <span class="address" data-at="0.5" data-fx="pop"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10V8a5 5 0 0 1 10 0v2h1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h1zm2 0h6V8a3 3 0 0 0-6 0v2z"/></svg>timer.pvmtdankaerts.be</span>
+          <span class="btn"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></span>
+        </div>
+      </div>
+
+      <div class="view" data-film="installeren" data-shot="menu">
+        <img class="full" src="shots/hulp/welkom.jpg" alt="" />
+        <div class="safari">
+          <span class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span>
+          <span class="address"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10V8a5 5 0 0 1 10 0v2h1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h1zm2 0h6V8a3 3 0 0 0-6 0v2z"/></svg>timer.pvmtdankaerts.be</span>
+          <span class="btn" data-pulse="0.3"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></span>
+        </div>
+        <div class="menu" style="right: 12px; bottom: 84px" data-at="1.5" data-fx="pop">
+          <div class="item is-pick">Deel<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7.500 8.500L12 4l4.500 4.500M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></div>
+          <div class="item">Voeg bladwijzer toe<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M7 4h10v16l-5-4-5 4z"/></svg></div>
+          <div class="item">Nieuw tabblad<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+        </div>
+      </div>
+
+      <div class="view" data-film="installeren" data-shot="deelvenster">
+        <img class="full" src="shots/hulp/welkom.jpg" alt="" />
+        <div class="dim"></div>
+        <div class="sharesheet" data-at="0.15" data-fx="sheet">
+          <div class="grip"></div>
+          <div class="site"><img src="../assets/icon-192.png" alt="" /><div><strong>Tabata Timer</strong><small>timer.pvmtdankaerts.be</small></div></div>
+          <div class="apps"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="group">
+            <div class="item">Kopieer<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg></div>
+            <div class="item">Zet in leeslijst<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="12" r="4"/><circle cx="16" cy="12" r="4"/></svg></div>
+          </div>
+          <div class="group">
+            <div class="item is-pick">Zet op beginscherm<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.500v7M8.500 12h7"/></svg></div>
+            <div class="item">Zoek op pagina<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg></div>
+            <div class="item">Druk af<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M7 14h10v6H7z"/></svg></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="view" data-film="installeren" data-shot="toevoegen">
+        <img class="full" src="shots/hulp/welkom.jpg" alt="" />
+        <div class="dim"></div>
+        <div class="addsheet" data-at="0.1" data-fx="sheet">
+          <div class="bar"><span>Annuleer</span><strong>Zet op beginscherm</strong><b data-pulse="0.9">Voeg toe</b></div>
+          <div class="card"><img src="../assets/icon-192.png" alt="" /><div><strong>Tabata</strong><small>https://timer.pvmtdankaerts.be/</small></div></div>
+          <p class="hint">Er komt een icoon op je beginscherm, zodat je deze website snel kunt openen.</p>
+        </div>
+      </div>
+
+      <div class="view homescreen" data-film="installeren" data-shot="beginscherm">
+        <div class="grid">
+          <div class="app"><i></i>Agenda</div><div class="app"><i></i>Foto's</div><div class="app"><i></i>Kaarten</div><div class="app"><i></i>Weer</div>
+          <div class="app"><i></i>Klok</div><div class="app"><i></i>Notities</div><div class="app"><i></i>Muziek</div><div class="app"><i></i>Mail</div>
+          <div class="app" data-at="0.7" data-fx="pop"><img src="../assets/icon-192.png" alt="" />Tabata</div>
+        </div>
+        <div class="ring" style="left: 20px; top: 292px; width: 82px; height: 100px; border-color: #fff" data-at="1.2" data-fx="fade" data-until="2.9" data-pulse="1.2"></div>
+        <div class="dock"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="view" data-film="installeren" data-shot="app" data-enter="zoom" data-origin="61,332">
+        <img class="full" src="shots/hulp/welkom.jpg" alt="" />
+      </div>
+
+      <!-- ================= Filmpje: training ontvangen ================= -->
+      <div class="view chat" data-film="ontvangen" data-shot="chat">
+        <div class="top"><span>E</span><strong>Emma</strong></div>
+        <div class="bubble" id="bubble" data-at="0.35" data-fx="pop"></div>
+        <div class="dim" data-at="2.5" data-fx="fade" style="background: rgba(6, 30, 31, 0.22)"></div>
+        <div class="menu" style="left: 14px; top: 556px; transform-origin: 10% 0" data-at="2.6" data-fx="pop">
+          <div class="item">Antwoord<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 8L5 13l5 5M5 13h9a5 5 0 0 0 5-5V6"/></svg></div>
+          <div class="item is-pick">Kopieer<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg></div>
+          <div class="item">Stuur door<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8l5 5-5 5M19 13h-9a5 5 0 0 1-5-5V6"/></svg></div>
+        </div>
+        <div class="copied" data-at="4.5" data-fx="pop">Gekopieerd</div>
+      </div>
+
+      <div class="view homescreen" data-film="ontvangen" data-shot="beginscherm">
+        <div class="grid">
+          <div class="app"><i></i>Agenda</div><div class="app"><i></i>Foto's</div><div class="app"><i></i>Kaarten</div><div class="app"><i></i>Weer</div>
+          <div class="app"><i></i>Klok</div><div class="app"><i></i>Notities</div><div class="app"><i></i>Muziek</div><div class="app"><i></i>Mail</div>
+          <div class="app"><img src="../assets/icon-192.png" alt="" />Tabata</div>
+        </div>
+        <div class="ring" style="left: 20px; top: 292px; width: 82px; height: 100px; border-color: #fff" data-at="0.3" data-fx="fade" data-pulse="0.3"></div>
+        <div class="dock"><i></i><i></i><i></i><i></i></div>
+      </div>
+
+      <div class="view" data-film="ontvangen" data-shot="ontvang" data-enter="zoom" data-origin="61,332">
+        <img class="full" src="shots/hulp/home-lang.jpg" alt="" data-scroll="-226" data-scroll-at="0.9" data-scroll-dur="1.1" />
+        <img class="tabs" src="shots/hulp/tabs-home.jpg" alt="" />
+        <div class="ring" style="left: 12px; top: 660px; width: 366px; height: 70px; border-radius: 999px" data-at="2.1" data-fx="fade" data-until="3.3" data-pulse="2.1"></div>
+        <div class="paste" data-at="3.4" data-fx="pop">Plak</div>
+      </div>
+
+      <div class="view" data-film="ontvangen" data-shot="voorbeeld">
+        <img class="full" src="shots/hulp/ontvangen.jpg" alt="" />
+        <div class="ring" style="left: 12px; top: 675px; width: 366px; height: 70px; border-radius: 999px" data-at="1.3" data-fx="fade" data-pulse="1.3"></div>
+      </div>
+
+      <div class="view" data-film="ontvangen" data-shot="klaar">
+        <img class="full" src="shots/hulp/home-nieuw.jpg" alt="" />
+        <div class="ring" id="newCard" data-at="0.6" data-fx="fade" data-pulse="0.6"></div>
+      </div>
+
+      <!-- ================= Filmpje: vernieuwen ================= -->
+      <div class="view" data-film="vernieuwen" data-shot="vanzelf">
+        <img class="full" src="shots/hulp/home.jpg" alt="" />
+        <div class="reload" data-at="1.5" data-fx="fade" data-until="2.9">
+          <svg data-spin viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.500 12a7.500 7.500 0 1 1-2.200-5.300M19.500 4.500v4h-4"/></svg>
+        </div>
+      </div>
+
+      <div class="view" data-film="vernieuwen" data-shot="handmatig">
+        <img class="full" src="shots/hulp/home.jpg" alt="" data-until="1.5" />
+        <img class="full" src="shots/hulp/profiel-lang.jpg" alt="" data-at="1.35" data-fx="fade" data-scroll="-583" data-scroll-at="2.1" data-scroll-dur="1.3" />
+        <img class="tabs" src="shots/hulp/tabs-home.jpg" alt="" data-until="1.5" />
+        <img class="tabs" src="shots/hulp/tabs-profiel.jpg" alt="" data-at="1.35" data-fx="fade" />
+        <div class="ring" id="refreshRow" data-at="3.5" data-fx="fade" data-until="5.2" data-pulse="3.5"></div>
+        <div class="apptoast" data-at="5.0" data-fx="fade" data-until="6.1">Even geduld, de app wordt vernieuwd</div>
+        <div class="reload" data-at="5.9" data-fx="fade" data-until="7.0">
+          <svg data-spin viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.500 12a7.500 7.500 0 1 1-2.200-5.300M19.500 4.500v4h-4"/></svg>
+        </div>
+      </div>
+
+      <div class="view" data-film="vernieuwen" data-shot="versie">
+        <img class="full" src="shots/hulp/profiel-app.jpg" alt="" />
+        <div class="ring" id="versionText" style="border-radius: 14px" data-at="0.5" data-fx="fade" data-pulse="0.5"></div>
+      </div>
+
+      <div class="status" id="status"><span>9:41</span>
+        <svg viewBox="0 0 86 22" fill="currentColor"><rect x="0" y="13" width="4.500" height="7" rx="1.200"/><rect x="7" y="10" width="4.500" height="10" rx="1.200"/><rect x="14" y="6.500" width="4.500" height="13.500" rx="1.200"/><rect x="21" y="3" width="4.500" height="17" rx="1.200"/><path d="M41 7.500c3.200 0 6 1.300 8 3.300l-1.900 2c-1.600-1.600-3.700-2.500-6.100-2.500s-4.500.9-6.100 2.500l-1.900-2c2-2 4.800-3.300 8-3.300zm0 5.300c1.700 0 3.200.7 4.300 1.800L41 19l-4.300-4.400c1.100-1.100 2.600-1.800 4.300-1.800z"/><rect x="56" y="4" width="25" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="1.600" opacity=".5"/><rect x="58.200" y="6.200" width="20.600" height="9.600" rx="2.400"/><rect x="82.500" y="8.500" width="2.500" height="5" rx="1.200" opacity=".5"/></svg>
+      </div>
+      <div class="island"></div>
+      <div class="homebar" id="homebar"></div>
+      <div id="ripple"></div>
+      <div id="finger"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { ART } from '../js/library-art.js';
+
+const params = new URLSearchParams(location.search);
+const FPS = 30;
+const SCALE = 500 / 390; // van punten van de iPhone naar pixels van het telefoonscherm
+
+// Icoontjes voor in het bolletje naast de tekst.
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.500l4.500 4.500L19 7.500"/></svg>';
+const REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19.500 12a7.500 7.500 0 1 1-2.200-5.300M19.500 4.500v4h-4"/></svg>';
+
+// ---------------- De drie filmpjes ----------------
+// Per shot: welk scherm, hoe lang, de tekst bovenaan en waar de vinger tikt.
+//   tap: { at: moment in het shot, to: [x, y] in punten van de iPhone, hold: seconden ingedrukt houden }
+//   light: true als de statusbalk witte letters moet hebben (donker scherm)
+const places = await (await fetch('shots/hulp/plaatsen.json')).json();
+const FILMS = {
+  installeren: [
+    { shot: 'safari', dur: 4.2, n: 1, text: 'Open <b>timer.pvmtdankaerts.be</b> in Safari' },
+    { shot: 'menu', dur: 5.4, n: 2, text: 'Tik op de <b>drie puntjes</b> en kies <b>Deel</b>', small: 'Zie je het deel-icoon al in de balk? Tik daar dan meteen op.', taps: [{ at: 1.3, to: [355, 795] }, { at: 3.9, to: [250, 643] }] },
+    { shot: 'deelvenster', dur: 5.0, n: 3, text: 'Kies <b>Zet op beginscherm</b>', small: 'Soms moet je in de lijst wat naar beneden vegen.', taps: [{ at: 3.3, to: [170, 565] }] },
+    { shot: 'toevoegen', dur: 4.2, n: 4, text: 'Tik rechtsboven op <b>Voeg toe</b>', taps: [{ at: 2.5, to: [333, 89] }] },
+    { shot: 'beginscherm', dur: 3.4, n: CHECK, text: 'Klaar! Open de app voortaan via <b>dit icoon</b>', light: true, taps: [{ at: 2.9, to: [61, 332] }] },
+    { shot: 'app', dur: 2.6, keepCaption: true },
+  ],
+  ontvangen: [
+    { shot: 'chat', dur: 6.0, n: 1, text: 'Hou het bericht ingedrukt en kies <b>Kopieer</b>', taps: [{ at: 1.6, to: [170, 330], hold: 0.9 }, { at: 4.1, to: [110, 625] }] },
+    { shot: 'beginscherm', dur: 3.0, n: 2, text: 'Open de <b>Tabata Timer</b>-app', light: true, taps: [{ at: 2.3, to: [61, 332] }] },
+    { shot: 'ontvang', dur: 6.6, n: 3, text: 'Tik onderaan op <b>Training ontvangen</b>', small: 'Vraagt je iPhone of de app mag plakken? Tik dan op Plak.', taps: [{ at: 2.9, to: places.ontvangen }, { at: 4.9, to: [195, 632] }] },
+    { shot: 'voorbeeld', dur: 4.6, n: 4, text: 'Kijk de training na en tik op <b>Toevoegen</b>', taps: [{ at: 3.0, to: places.toevoegen }] },
+    { shot: 'klaar', dur: 4.6, n: CHECK, text: 'De training staat bij je <b>trainingen</b>', small: 'Tik op de startknop om te beginnen.' },
+  ],
+  vernieuwen: [
+    { shot: 'vanzelf', dur: 7.2, n: REFRESH, text: 'De app werkt <b>zichzelf</b> bij', small: 'Telkens je ze opent met internet. Nieuwe oefeningen komen vanzelf mee.' },
+    { shot: 'handmatig', dur: 8.0, n: 1, text: 'Niet wachten? Tik op <b>Profiel</b> en dan op <b>App vernieuwen</b>', taps: [{ at: 1.1, to: places.tabProfiel }, { at: 4.7, to: places.vernieuwen }] },
+    { shot: 'versie', dur: 4.6, n: 2, text: 'Daar zie je ook welke <b>versie</b> je hebt' },
+  ],
+};
+const FILM = FILMS[params.get('film')] ? params.get('film') : 'installeren';
+const SHOTS = FILMS[FILM];
+let clock = 0;
+for (const shot of SHOTS) {
+  shot.start = clock;
+  shot.view = document.querySelector(`.view[data-film="${FILM}"][data-shot="${shot.shot}"]`);
+  clock += shot.dur;
+}
+const TOTAL = clock;
+document.querySelectorAll(`.view:not([data-film="${FILM}"])`).forEach((view) => view.remove());
+
+// ---------------- Voorbereiding ----------------
+const clamp = (x) => Math.max(0, Math.min(1, x));
+const span = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = (p) => 1 - Math.pow(1 - p, 3);
+const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+const overshoot = (p) => 1 + 2.2 * Math.pow(p - 1, 3) + 1.2 * Math.pow(p - 1, 2);
+const mix = (a, b, p) => a + (b - a) * p;
+
+// De teksten bovenaan.
+const caps = document.getElementById('caps');
+for (const shot of SHOTS) {
+  if (!shot.text) continue;
+  shot.cap = document.createElement('div');
+  shot.cap.className = 'cap';
+  shot.cap.innerHTML = `<em>${shot.n}</em><div><h2>${shot.text}</h2>${shot.small ? `<p>${shot.small}</p>` : ''}</div>`;
+  caps.append(shot.cap);
+}
+
+// Het bericht in het chatgesprek (de echte tekst die de app verstuurt).
+const bubble = document.getElementById('bubble');
+if (bubble) {
+  const message = await (await fetch('shots/hulp/bericht.txt')).text();
+  const [intro, , how, s1, s2, s3, , noApp, url] = message.split('\n');
+  bubble.innerHTML = `<p>${intro}</p><p>${how}<br>${s1}<br>${s2}<br>${s3}</p><p>${noApp}<br><a>${url.slice(0, 66)}…</a></p><time>9:38</time>`;
+}
+
+// Kaders rond knoppen: de plaats komt uit de opnames.
+const frame = (id, [x, y, w, h], centered, grow = 6) => {
+  const node = document.getElementById(id);
+  if (!node) return;
+  const left = centered ? x - w / 2 : x;
+  const top = centered ? y - h / 2 : y;
+  node.style.cssText += `left:${left - grow}px;top:${top - grow}px;width:${w + grow * 2}px;height:${h + grow * 2}px;`;
+};
+frame('newCard', places.nieuweKaart, false);
+frame('refreshRow', places.vernieuwen, true, 0);
+frame('versionText', places.versie, true, 5);
+
+// Stickers bij "vernieuwen": nieuwe oefeningen die vanzelf meekomen.
+const STICKERS = FILM === 'vernieuwen' ? [['birddog', 40, 430, -8, 3.2], ['wallsit', 850, 520, 8, 3.6], ['superman', 60, 980, 6, 4.0], ['russiantwist', 840, 1040, -7, 4.4]] : [];
+const stickers = STICKERS.map(([art, x, y, rot, at], i) => {
+  const node = document.createElement('div');
+  node.className = 'sticker';
+  node.innerHTML = `${ART[art]}<i>nieuw</i>`;
+  node.style.left = `${x}px`;
+  node.style.top = `${y}px`;
+  document.getElementById('stickers').append(node);
+  return { node, rot, at, phase: i * 1.7 };
+});
+
+const finger = document.getElementById('finger');
+const ripple = document.getElementById('ripple');
+
+// ---------------- Eén beeld tekenen ----------------
+window.renderFrame = async (t) => {
+  document.querySelector('.glow--a').style.transform = `translate(${Math.sin(t * 0.25) * 50}px, ${Math.cos(t * 0.2) * 40}px)`;
+  document.querySelector('.glow--b').style.transform = `translate(${Math.cos(t * 0.22) * 60}px, ${Math.sin(t * 0.27) * 40}px)`;
+
+  let index = 0;
+  while (index < SHOTS.length - 1 && SHOTS[index + 1].start <= t) index++;
+  const current = SHOTS[index];
+
+  // ---- Tekst bovenaan: wisselt per shot ----
+  for (const [i, shot] of SHOTS.entries()) {
+    if (!shot.cap) continue;
+    // Een shot zonder eigen tekst (keepCaption) laat de vorige tekst staan.
+    let end = shot.start + shot.dur;
+    for (let j = i + 1; j < SHOTS.length && SHOTS[j].keepCaption; j++) end += SHOTS[j].dur;
+    const last = end >= TOTAL - 0.01;
+    const p = easeOut(span(t, shot.start + 0.1, shot.start + 0.6));
+    const out = last ? 0 : span(t, end - 0.3, end);
+    shot.cap.style.opacity = t >= shot.start && t < end ? p * (1 - out) : 0;
+    shot.cap.style.transform = `translateY(${(1 - p) * 30 - out * 20}px)`;
+  }
+
+  // ---- Schermen in de telefoon ----
+  for (const [i, shot] of SHOTS.entries()) {
+    const view = shot.view;
+    const local = t - shot.start;
+    // Een scherm blijft nog even staan terwijl het volgende erover komt.
+    const visible = local >= 0 && (i === SHOTS.length - 1 || local < shot.dur + 0.5);
+    view.style.visibility = visible ? 'visible' : 'hidden';
+    if (!visible) continue;
+    view.style.zIndex = i + 1;
+
+    const enter = i === 0 ? 1 : easeInOut(span(local, 0, 0.45));
+    if (view.dataset.enter === 'zoom') {
+      // De app "groeit" uit het icoon op het beginscherm.
+      const [ox, oy] = view.dataset.origin.split(',').map(Number);
+      const k = mix(0.16, 1, enter);
+      view.style.transform = `translate(${ox * SCALE * (1 - k)}px, ${oy * SCALE * (1 - k)}px) scale(${SCALE * k})`;
+      view.style.borderRadius = `${mix(60, 0, enter)}px`;
+      view.style.opacity = clamp(enter * 3);
+    } else {
+      view.style.transform = `scale(${SCALE})`;
+      view.style.opacity = enter;
+    }
+
+    // Elk onderdeel komt binnen op zijn eigen moment (data-at) en kan weer verdwijnen (data-until).
+    view.querySelectorAll('[data-at], [data-until], [data-pulse], [data-scroll], [data-spin]').forEach((node) => {
+      const at = node.dataset.at === undefined ? -1 : Number(node.dataset.at);
+      const p = at < 0 ? 1 : span(local, at, at + 0.45);
+      const e = easeOut(p);
+      const gone = node.dataset.until === undefined ? 0 : span(local, Number(node.dataset.until), Number(node.dataset.until) + 0.3);
+      let transform = '';
+      if (node.dataset.fx === 'pop') transform = `scale(${p === 0 ? 0 : 0.6 + 0.4 * overshoot(p)})`;
+      if (node.dataset.fx === 'sheet') transform = `translateY(${(1 - e) * 100}%)`;
+      if (node.dataset.scroll) {
+        const s = easeInOut(span(local, Number(node.dataset.scrollAt), Number(node.dataset.scrollAt) + Number(node.dataset.scrollDur)));
+        transform += ` translateY(${Number(node.dataset.scroll) * s}px)`;
+      }
+      if (node.dataset.spin !== undefined) transform += ` rotate(${local * 300}deg)`;
+      if (node.classList.contains('apptoast')) transform = 'translateX(-50%)';
+      node.style.transform = transform;
+      node.style.opacity = (node.dataset.fx === 'sheet' ? 1 : clamp(p * 1.5)) * (1 - gone);
+      // Een zachte "klop" om de aandacht te trekken.
+      if (node.dataset.pulse !== undefined && local >= Number(node.dataset.pulse)) {
+        const beat = (Math.sin((local - Number(node.dataset.pulse)) * 6.5) + 1) / 2;
+        node.style.boxShadow = `0 0 0 ${3 + beat * 7}px rgba(135, 199, 198, ${0.75 - beat * 0.35})`;
+      } else if (node.dataset.pulse !== undefined) {
+        node.style.boxShadow = 'none';
+      }
+    });
+  }
+
+  // Het bericht in de chat wordt wat groter terwijl je het ingedrukt houdt.
+  if (bubble) {
+    const local = t - SHOTS[0].start;
+    const lift = easeOut(span(local, 1.7, 2.5));
+    const p = span(local, 0.35, 0.8);
+    bubble.style.transform = `scale(${(p === 0 ? 0 : 0.6 + 0.4 * overshoot(p)) * (1 + lift * 0.03)})`;
+    bubble.style.zIndex = lift > 0 ? 5 : 0;
+    bubble.style.boxShadow = lift > 0 ? `0 ${lift * 14}px ${lift * 40}px rgba(0,0,0,${lift * 0.25})` : '';
+  }
+
+  // ---- Statusbalk: witte letters op een donker scherm ----
+  document.getElementById('status').classList.toggle('is-light', !!current.light && t - current.start > 0.2);
+  document.getElementById('homebar').classList.toggle('is-light', !!current.light && t - current.start > 0.2);
+
+  // ---- Stickers ----
+  for (const s of stickers) {
+    const p = span(t, s.at, s.at + 0.5);
+    const out = span(t, SHOTS[0].dur - 0.4, SHOTS[0].dur);
+    s.node.style.opacity = clamp(p * 1.6) * (1 - out);
+    s.node.style.transform = `translateY(${Math.sin(t * 2.4 + s.phase) * 10}px) rotate(${s.rot + Math.sin(t * 1.7 + s.phase) * 3}deg) scale(${p === 0 ? 0 : 0.5 + 0.5 * overshoot(p)})`;
+  }
+
+  // ---- De vinger ----
+  let fingerOpacity = 0;
+  let rippleOpacity = 0;
+  for (const shot of SHOTS) {
+    for (const tap of shot.taps || []) {
+      const local = t - shot.start - tap.at; // 0 = het moment van de tik
+      const hold = tap.hold || 0;
+      if (local < -0.75 || local > hold + 0.6) continue;
+      const [x, y] = tap.to;
+      const move = easeInOut(span(local, -0.75, -0.1));
+      const px = mix(x + 50, x, move) * SCALE;
+      const py = mix(y + 130, y, move) * SCALE;
+      const press = span(local, -0.1, 0) - span(local, hold, hold + 0.2);
+      fingerOpacity = clamp((local + 0.75) * 5) * (1 - span(local, hold + 0.3, hold + 0.6));
+      finger.style.transform = `translate(${px}px, ${py}px) scale(${1 - 0.28 * press})`;
+      const ring = span(local, 0, 0.5 + hold);
+      rippleOpacity = ring > 0 && ring < 1 ? 1 - ring : 0;
+      ripple.style.transform = `translate(${x * SCALE}px, ${y * SCALE}px) scale(${1 + ring * 1.6})`;
+    }
+  }
+  finger.style.opacity = fingerOpacity;
+  ripple.style.opacity = rippleOpacity;
+};
+
+window.FILM = { total: TOTAL, fps: FPS, film: FILM, shots: SHOTS.map((s) => ({ shot: s.shot, start: s.start, dur: s.dur })) };
+
+// Wachten tot lettertypes en afbeeldingen geladen zijn, dan het eerste beeld tonen.
+await document.fonts.ready;
+await Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
+const startAt = Number(params.get('t') || 0);
+await window.renderFrame(startAt);
+window.READY = true;
+
+if (params.get('speel')) {
+  const begin = performance.now() - startAt * 1000;
+  const loop = async () => {
+    await window.renderFrame(((performance.now() - begin) / 1000) % TOTAL);
+    requestAnimationFrame(loop);
+  };
+  loop();
+}
+</script>
+</body>
+</html>

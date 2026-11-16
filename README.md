@@ -45,10 +45,14 @@ Een iPhone kan de app alleen installeren vanaf een adres met `https`. GitHub Pag
 4. Kies de branch (bv. `main`) en de map **/ (root)** en klik op **Save**.
 5. Wacht een minuutje. Bovenaan verschijnt het adres, bv. `https://<gebruikersnaam>.github.io/TabataTimer/`.
 
+De app staat nu op een eigen adres: **https://timer.pvmtdankaerts.be**. Dat adres staat in het bestand `CNAME`;
+bij Combell verwijst een DNS-record (type CNAME, naam `timer`) naar `greetp.github.io`.
+
 ## De app op je iPhone zetten
 
 1. Open het adres van hierboven in **Safari** op je iPhone.
-2. Tik onderaan op het **deel-icoon** (vierkantje met pijl omhoog).
+2. Tik op de **drie puntjes** en kies **Deel**. Staat het **deel-icoon** (vierkantje met pijl omhoog) al in de balk,
+   tik daar dan meteen op.
 3. Kies **Zet op beginscherm** en tik op **Voeg toe**.
 4. Open de app voortaan via het nieuwe icoon op je beginscherm.
 
@@ -99,6 +103,64 @@ Goed om te weten:
    - **Samenvoegen** – voegt toe wat nog niet op het toestel staat. Niets wordt gewist.
    - **Alles vervangen** – wist alles op het toestel en zet de reservekopie in de plaats.
 
+## Hulppagina
+
+Op `hulp/` (in de app: **Profiel → Hulp en uitleg**) staat een pagina met veelgestelde vragen. Bij drie vragen hoort
+een kort filmpje. De tekst pas je aan in `hulp/index.html`; elke vraag is daar een blok `<section class="help-item">`.
+
+De filmpjes maak je opnieuw met de scripts in `promo/` (zie hieronder):
+
+```bash
+node promo/opnemen-hulp.js
+```
+
+```bash
+node promo/maak-film.js installeren
+```
+
+```bash
+node promo/maak-film.js ontvangen
+```
+
+```bash
+node promo/maak-film.js vernieuwen
+```
+
+De schermen van Safari, het deelvenster en het beginscherm in die filmpjes zijn nagetekend in `promo/uitleg.html`.
+Verandert Apple die schermen, dan pas je ze daar aan.
+
+## Promofilmpje
+
+In de map `promo/` staat alles om het promofilmpje te maken. Het filmpje is een webpagina (`promo/film.html`)
+die beeld per beeld wordt omgezet naar een video. Je hebt Node.js, Playwright en ffmpeg nodig.
+
+1. Start de app lokaal:
+
+   ```bash
+   python3 -m http.server 4173
+   ```
+
+2. Neem de schermen van de app op (met voorbeeldgegevens, geen echte namen):
+
+   ```bash
+   node promo/opnemen.js
+   ```
+
+3. Maak de staande video (1080 × 1920, voor WhatsApp en sociale media):
+
+   ```bash
+   node promo/maak-film.js staand
+   ```
+
+4. Maak de liggende video (1920 × 1080, voor de wachtzaal of de website):
+
+   ```bash
+   node promo/maak-film.js liggend
+   ```
+
+De video's komen in `promo/uit/`. De teksten pas je aan in `promo/film.html`; elke scène staat daar als een
+blok met haar eigen tekst. Na een wijziging aan de app zelf voer je stap 2 opnieuw uit, zodat de schermen kloppen.
+
 ## Hoe zit de code in elkaar?
 
 | Bestand | Wat doet het? |
@@ -116,6 +178,9 @@ Goed om te weten:
 | `js/share.js` | Zet een training om naar een link en terug, om ze te delen. |
 | `sw.js` | Service worker: zorgt dat de app zonder internet werkt. |
 | `manifest.webmanifest` | Naam, icoon en kleuren voor op het beginscherm. |
+| `hulp/` | De hulppagina met veelgestelde vragen en de drie uitlegfilmpjes. |
+| `css/hulp.css` | Extra vormgeving voor de hulppagina. |
+| `promo/` | Scripts en pagina's om het promofilmpje en de uitlegfilmpjes te maken. De app zelf heeft ze niet nodig. |
 | `version.json` | Het versienummer van de app. |
 | `assets/` | Logo en app-iconen. |
 

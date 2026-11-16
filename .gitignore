@@ -1,3 +1,9 @@
 .DS_Store
 node_modules/
 .env
+
+# Promofilmpje: opnames, losse beelden en de video zelf worden opnieuw gemaakt met de scripts in promo/
+promo/shots/
+promo/frames/
+promo/voorbeeld/
+promo/uit/

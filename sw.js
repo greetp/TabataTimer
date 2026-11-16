@@ -8,12 +8,14 @@
 // zie je een nieuwe versie niet meteen.
 // ---------------------------------------------------------------
 
-const CACHE = 'tabata-timer-v5';
+const CACHE = 'tabata-timer-v6';
 
 const FILES = [
   './',
   './index.html',
   './css/app.css',
+  './css/hulp.css',
+  './hulp/',
   './js/app.js',
   './js/store.js',
   './js/images.js',
@@ -47,12 +49,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET' || new URL(request.url).origin !== location.origin) return;
+  // Filmpjes laten we met rust: die haalt de browser zelf in stukjes op en bewaren we niet.
+  if (request.headers.has('range') || new URL(request.url).pathname.endsWith('.mp4')) return;
 
   event.respondWith(
     fetch(request, { cache: 'no-cache' })
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE).then((cache) => cache.put(request, copy));
+        if (response.status === 200) {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy));
+        }
         return response;
       })
       .catch(() => caches.match(request, { ignoreSearch: true }).then((hit) => hit || caches.match('./index.html')))

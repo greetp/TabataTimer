@@ -50,7 +50,7 @@ bij Combell verwijst een DNS-record (type CNAME, naam `timer`) naar `greetp.gith
 
 ## De app op je iPhone zetten
 
-1. Open het adres van hierboven in **Safari** op je iPhone.
+1. Open het adres van hierboven in je browser op je iPhone, bijvoorbeeld **Safari** of **Chrome**.
 2. Tik op de **drie puntjes** en kies **Deel**. Staat het **deel-icoon** (vierkantje met pijl omhoog) al in de balk,
    tik daar dan meteen op.
 3. Kies **Zet op beginscherm** en tik op **Voeg toe**.
@@ -64,7 +64,7 @@ Goed om te weten:
 - **Signaal halverwege**: twee korte piepjes op de helft van elke werkfase. Aan of uit te zetten onder **Profiel → Geluid**.
 - Hou de app **open** tijdens je training. Het scherm blijft vanzelf aan, maar een web-app kan geen geluid
   maken als het toestel vergrendeld is.
-- De gegevens staan **alleen op dat toestel**. Wis je de websitegegevens van Safari of verwijder je de app,
+- De gegevens staan **alleen op dat toestel**. Wis je de websitegegevens van je browser of verwijder je de app,
   dan zijn ook de profielen weg. Maak daarom af en toe een reservekopie (zie hieronder).
 
 ## Een training delen
@@ -82,7 +82,7 @@ Goed om te weten:
 
 Goed om te weten:
 
-- Een link in een bericht opent op een iPhone altijd in Safari, niet in de app op het beginscherm. Daarom is het
+- Een link in een bericht opent op een iPhone altijd in de browser, niet in de app op het beginscherm. Daarom is het
   kopiëren nodig. Wie de app nog niet heeft, kan gewoon op de link tikken.
 - Eigen foto's gaan niet mee, want die zijn te groot voor een link. Tekeningen uit de bibliotheek en links naar
   filmpjes gaan wel mee.

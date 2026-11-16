@@ -175,6 +175,20 @@ const DRAWINGS = {
 
   burpee: figure({ at: ['ankle', [30, 103]], torso: -35, head: -20, leg: [-22, 115], arm: [80, 85] }, true) + figure(jump(84, 98)),
 
+  // Op de zij liggen; het bovenste been gaat gestrekt omhoog.
+  // Drie dingen tonen dat het figuurtje op de zij ligt en niet op de rug:
+  // het hoofd rust op de hand, de bovenste hand ligt op de heup (elleboog steekt uit),
+  // en de voeten wijzen in het verlengde van het been in plaats van omhoog.
+  sidelegraise: (() => {
+    const side = (topLeg) => ({ at: ['hip', [62, 100]], torso: 186, head: 235, leg: [topLeg, topLeg, topLeg], farLeg: [0, 0, 0], arm: [-40, 38], farArm: [170, -72] });
+    return figure(side(-7), true) + figure(side(-36));
+  })(),
+
+  // Bruggetje met één been gestrekt omhoog; heupen omhoog en traag laten zakken.
+  singlebridge:
+    figure({ at: ['shoulder', [36, 101]], torso: 180, head: 180, leg: [-70, -70, -160], farLeg: [-42, 55], arm: [4, 0] }, true) +
+    figure({ at: ['shoulder', [36, 101]], torso: 158, head: 180, leg: [-62, -62, -152], farLeg: [-22, 90], arm: [4, 0] }),
+
   // ---------------- Muurpilates ----------------
 
   // Rug tegen de muur, voeten een stap naar voren; naar voren afrollen.

@@ -1,45 +1,50 @@
 // ---------------------------------------------------------------
-// promo/maak-film.js — maakt van promo/film.html een video (mp4).
+// promo/maak-film.js — maakt van een filmpje (een webpagina) een video (mp4).
 //
 // Vooraf:
 //   1. start de app lokaal:   python3 -m http.server 4173
-//   2. maak de opnames:       node promo/opnemen.js
+//   2. maak de opnames:       node promo/opnemen.js        (voor het promofilmpje)
+//                             node promo/opnemen-hulp.js   (voor de uitlegfilmpjes)
 // Uitvoeren:
-//   node promo/maak-film.js staand      -> promo/uit/tabata-timer-staand.mp4   (1080 x 1920)
-//   node promo/maak-film.js liggend     -> promo/uit/tabata-timer-liggend.mp4  (1920 x 1080)
+//   node promo/maak-film.js staand        -> promo/uit/tabata-timer-staand.mp4
+//   node promo/maak-film.js liggend       -> promo/uit/tabata-timer-liggend.mp4
+//   node promo/maak-film.js installeren   -> hulp/installeren.mp4 (+ .jpg als voorbeeld)
+//   node promo/maak-film.js ontvangen     -> hulp/ontvangen.mp4
+//   node promo/maak-film.js vernieuwen    -> hulp/vernieuwen.mp4
 //
 // Hoe het werkt: de pagina wordt beeld per beeld gevraagd hoe ze eruitziet
 // op dat moment, daarvan wordt telkens een foto genomen, en ffmpeg plakt
-// alle foto's aan elkaar tot een video.
+// alle foto's aan elkaar tot een video. De lijst van filmpjes staat in films.js.
 // ---------------------------------------------------------------
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const { FILMS } = require('./films.js');
 
 const WORKERS = 4; // zoveel beelden worden tegelijk gemaakt
 
 (async () => {
-  const layout = process.argv[2] === 'liggend' ? 'liggend' : 'staand';
-  const size = layout === 'liggend' ? { width: 1920, height: 1080 } : { width: 1080, height: 1920 };
-  const frames = path.join(__dirname, 'frames', layout);
-  const out = path.join(__dirname, 'uit');
+  const name = process.argv[2] || 'staand';
+  const film = FILMS[name];
+  if (!film) throw new Error(`Onbekend filmpje "${name}". Kies uit: ${Object.keys(FILMS).join(', ')}`);
+  const frames = path.join(__dirname, 'frames', name);
   fs.rmSync(frames, { recursive: true, force: true });
   fs.mkdirSync(frames, { recursive: true });
-  fs.mkdirSync(out, { recursive: true });
+  fs.mkdirSync(path.dirname(film.out), { recursive: true });
 
   const browser = await chromium.launch();
   const open = async () => {
-    const page = await browser.newPage({ viewport: size, deviceScaleFactor: 1 });
+    const page = await browser.newPage({ viewport: film.size, deviceScaleFactor: 1 });
     page.on('pageerror', (e) => console.error('FOUT in de pagina:', e.message));
-    await page.goto(`http://127.0.0.1:4173/promo/film.html?layout=${layout}`);
+    await page.goto(`http://127.0.0.1:4173/promo/${film.page}`);
     await page.waitForFunction(() => window.READY === true);
     return page;
   };
   const pages = await Promise.all(Array.from({ length: WORKERS }, open));
   const { total, fps } = await pages[0].evaluate(() => window.FILM);
   const count = Math.round(total * fps);
-  console.log(`${layout}: ${count} beelden (${total.toFixed(1)} s)`);
+  console.log(`${name}: ${count} beelden (${total.toFixed(1)} s)`);
 
   let next = 0;
   const started = Date.now();
@@ -57,8 +62,15 @@ const WORKERS = 4; // zoveel beelden worden tegelijk gemaakt
   await browser.close();
   console.log(`beelden klaar in ${Math.round((Date.now() - started) / 1000)} s; nu de video maken`);
 
-  const file = path.join(out, `tabata-timer-${layout}.mp4`);
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(fps), '-i', path.join(frames, '%05d.jpg'), '-c:v', 'libx264', '-preset', 'slow', '-crf', '19', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', file]);
+  // "scale" maakt de video kleiner (minder megabytes), bv. 720 pixels breed voor op de hulppagina.
+  const filters = film.scale ? ['-vf', `scale=${film.scale}:-2:flags=lanczos`] : [];
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(fps), '-i', path.join(frames, '%05d.jpg'), ...filters, '-c:v', 'libx264', '-preset', 'slow', '-crf', String(film.crf), '-pix_fmt', 'yuv420p', '-movflags', '+faststart', film.out]);
+
+  // Het stilstaande voorbeeld dat je ziet vóór je op afspelen tikt.
+  if (film.poster !== undefined) {
+    const still = path.join(frames, `${String(Math.round(film.poster * fps)).padStart(5, '0')}.jpg`);
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', still, ...filters, '-q:v', '4', film.out.replace(/\.mp4$/, '.jpg')]);
+  }
   fs.rmSync(frames, { recursive: true, force: true });
-  console.log(`klaar: ${file} (${(fs.statSync(file).size / 1e6).toFixed(1)} MB)`);
+  console.log(`klaar: ${film.out} (${(fs.statSync(film.out).size / 1e6).toFixed(2)} MB)`);
 })().catch((e) => { console.error('MISLUKT', e.message); process.exit(1); });

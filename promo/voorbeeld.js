@@ -1,23 +1,26 @@
-// promo/voorbeeld.js — maakt stilstaande beelden van het filmpje op gekozen momenten.
+// promo/voorbeeld.js — maakt stilstaande beelden van een filmpje op gekozen momenten.
 // Handig om snel te controleren zonder de hele video te maken.
-// Gebruik:  node promo/voorbeeld.js staand 1.2 4 9.5      (layout, daarna de seconden)
+// Gebruik:  node promo/voorbeeld.js staand 1.2 4 9.5        (promofilm: staand of liggend)
+//           node promo/voorbeeld.js installeren 2 6 11      (uitlegfilmpje: installeren, ontvangen of vernieuwen)
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
+const { FILMS } = require('./films.js');
 (async () => {
-  const [layout = 'staand', ...times] = process.argv.slice(2);
-  const size = layout === 'liggend' ? { width: 1920, height: 1080 } : { width: 1080, height: 1920 };
+  const [name = 'staand', ...times] = process.argv.slice(2);
+  const film = FILMS[name];
+  if (!film) throw new Error(`Onbekend filmpje "${name}". Kies uit: ${Object.keys(FILMS).join(', ')}`);
   const out = path.join(__dirname, 'voorbeeld'); fs.mkdirSync(out, { recursive: true });
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: size, deviceScaleFactor: 1 });
+  const page = await browser.newPage({ viewport: film.size, deviceScaleFactor: 1 });
   const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-  await page.goto(`http://127.0.0.1:4173/promo/film.html?layout=${layout}`);
+  await page.goto(`http://127.0.0.1:4173/promo/${film.page}`);
   await page.waitForFunction(() => window.READY === true);
-  const film = await page.evaluate(() => window.FILM);
-  console.log(layout, 'duur:', film.total.toFixed(1), 's |', film.scenes.map((s) => `${s.id}@${s.start.toFixed(1)}`).join(' '));
+  const info = await page.evaluate(() => window.FILM);
+  console.log(name, 'duur:', info.total.toFixed(1), 's |', (info.scenes || info.shots).map((s) => `${s.id || s.shot}@${s.start.toFixed(1)}`).join(' '));
   for (const t of times) {
     await page.evaluate((t) => window.renderFrame(t), Number(t));
-    await page.screenshot({ path: path.join(out, `${layout}-${String(t).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 85 });
+    await page.screenshot({ path: path.join(out, `${name}-${String(t).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 85 });
   }
   if (errors.length) console.log('FOUTEN:', errors);
   await browser.close();

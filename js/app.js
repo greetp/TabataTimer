@@ -206,6 +206,7 @@ function viewUsers() {
         <small>Toevoegen</small>
       </button>
     </div>
+    <a class="link help-link" href="hulp/#installeren">${icon.info} Hoe zet ik deze app op mijn telefoon?</a>
   </main>`;
 }
 
@@ -422,6 +423,10 @@ function viewProfile(user) {
 
     <h2 class="eyebrow section-gap">App</h2>
     <div class="list">
+      <a class="row" href="hulp/">
+        <span class="avatar avatar--ghost avatar--plain">${icon.info}</span>
+        <span class="row-body"><strong>Hulp en uitleg</strong><small>Korte filmpjes en antwoorden op veelgestelde vragen</small></span>
+      </a>
       <button class="row" data-action="refresh-app">
         <span class="avatar avatar--ghost avatar--plain">${icon.refresh}</span>
         <span class="row-body"><strong>App vernieuwen</strong><small>Haalt de nieuwste versie op${loadedVersion ? ` · nu versie ${esc(loadedVersion)}` : ''}</small></span>

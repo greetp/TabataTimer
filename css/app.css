@@ -1936,3 +1936,13 @@ a.button--wide {
   text-align: center;
   white-space: normal;
 }
+
+/* ---- Links naar de hulppagina ---- */
+a.row {
+  color: inherit;
+  text-decoration: none;
+}
+
+.help-link {
+  margin-top: 1.6rem;
+}

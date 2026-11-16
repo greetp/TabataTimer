@@ -24,26 +24,34 @@ function pack(workout, from) {
   const exercises = (workout.exercises || []).map((e) => {
     const item = libraryItem(e.libraryId);
     // Een ongewijzigde oefening uit de bibliotheek: alleen haar code is genoeg.
-    if (item && e.name === item.name && (e.note || '') === item.note && !e.video) return e.libraryId;
+    if (item && e.name === item.name && (e.note || '') === item.note && !e.video && !e.reps) return e.libraryId;
     const short = { n: e.name };
     if (e.note) short.o = e.note;
     if (e.libraryId) short.l = e.libraryId;
     if (e.video) short.v = e.video;
+    if (e.reps) short.r = e.reps;
     return short;
   });
-  return { v: 1, n: workout.name, g: workout.group || '', t: TIMES.map((key) => workout[key]), e: exercises, by: from };
+  const packed = { v: 1, n: workout.name, g: workout.group || '', t: TIMES.map((key) => workout[key]), e: exercises, by: from };
+  // Alleen meesturen als het afwijkt van het gewone geval (op tijd, als circuit): zo blijft de link kort.
+  if (workout.workMode === 'reps') {
+    packed.m = 1;
+    packed.r = workout.reps || 12;
+  }
+  if (workout.order === 'exercise') packed.d = 1;
+  return packed;
 }
 
 function unpack(data) {
   if (!data || data.v !== 1 || !Array.isArray(data.t)) return null;
-  const raw = { name: data.n, group: data.g };
+  const raw = { name: data.n, group: data.g, workMode: data.m ? 'reps' : 'time', reps: data.r, order: data.d ? 'exercise' : 'circuit' };
   TIMES.forEach((key, i) => (raw[key] = data.t[i]));
   raw.exercises = (Array.isArray(data.e) ? data.e : []).map((e) => {
     if (typeof e === 'string') {
       const item = libraryItem(e);
       return item ? { name: item.name, note: item.note, libraryId: e } : null;
     }
-    return e && typeof e === 'object' ? { name: e.n, note: e.o, libraryId: e.l, video: e.v } : null;
+    return e && typeof e === 'object' ? { name: e.n, note: e.o, libraryId: e.l, video: e.v, reps: e.r } : null;
   });
   // sanitizeWorkout kijkt elke waarde na: een link kan door iedereen gemaakt zijn.
   const workout = sanitizeWorkout(raw);

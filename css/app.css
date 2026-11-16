@@ -1946,3 +1946,16 @@ a.row {
 .help-link {
   margin-top: 1.6rem;
 }
+
+/* ---- Opbouw van een training: op tijd of op aantal, circuit of per oefening ---- */
+.choice + .choice {
+  margin-top: 1.1rem;
+}
+
+.choice .segmented {
+  margin: 0 0 0.5rem;
+}
+
+.choice .hint {
+  margin: 0 0.25rem;
+}

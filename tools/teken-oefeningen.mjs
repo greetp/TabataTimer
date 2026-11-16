@@ -112,6 +112,11 @@ function frontFigure({ x, footY, legs, arms }, ghost = false) {
 const ground = `<line x1="8" y1="${GROUND}" x2="112" y2="${GROUND}" stroke="${COLOR.ground}" stroke-width="2.5" stroke-linecap="round"/>`;
 const flip = (content) => `<g transform="translate(120 0) scale(-1 1)">${content}</g>`;
 
+// Een muur: x = waar de muur begint (van links geteld).
+const wall = (x) => `<rect x="${x}" y="12" width="13" height="${GROUND - 12}" rx="3" fill="${COLOR.prop}"/>`;
+// Een muur achter het figuurtje (vooraanzicht).
+const wallBehind = `<rect x="14" y="10" width="92" height="${GROUND - 10}" rx="6" fill="#e6e2dc"/>`;
+
 // ---------------- De houdingen ----------------
 
 const squatDown = { at: ['ankle', [54, 103]], torso: -62, leg: [12, 112], arm: [5, -8] };
@@ -169,6 +174,45 @@ const DRAWINGS = {
   highknees: figure({ at: ['farAnkle', [56, 103]], torso: -88, leg: [-5, 95], farLeg: [90, 90], arm: [130, 60], farArm: [40, -50] }),
 
   burpee: figure({ at: ['ankle', [30, 103]], torso: -35, head: -20, leg: [-22, 115], arm: [80, 85] }, true) + figure(jump(84, 98)),
+
+  // ---------------- Muurpilates ----------------
+
+  // Rug tegen de muur, voeten een stap naar voren; naar voren afrollen.
+  wallrolldown:
+    wall(16) +
+    figure({ at: ['ankle', [44, 103]], torso: -90, leg: [76, 76, 0], arm: [90, 90] }, true) +
+    figure({ at: ['ankle', [44, 103]], torso: 35, head: 62, leg: [76, 76, 0], arm: [90, 90] }),
+
+  // Vooraanzicht: armen glijden langs de muur omhoog.
+  wallangel: wallBehind + frontFigure({ x: 60, footY: 104, legs: 5, arms: 95 }, true) + frontFigure({ x: 60, footY: 104, legs: 5, arms: 152 }),
+
+  // Schuin tegen de muur leunen en uitduwen.
+  wallpushup:
+    wall(96) +
+    figure({ at: ['ankle', [53, 103]], torso: -68, head: -62, leg: [112, 112, 20], arm: [50, -49] }, true) +
+    figure({ at: ['ankle', [53, 103]], torso: -75, head: -72, leg: [105, 105, 10], arm: [0, 0] }),
+
+  // Op de rug, voeten plat tegen de muur; heupen omhoog.
+  wallbridge:
+    wall(98) +
+    figure({ at: ['shoulder', [35, 101]], torso: 180, head: 180, leg: [-46.2, 0, -90], arm: [2, 0] }, true) +
+    figure({ at: ['shoulder', [35, 101]], torso: 157, head: 180, leg: [-30.8, 19.3, -90], arm: [2, 0] }),
+
+  // Op de rug, benen recht omhoog tegen de muur; één been zakt naar je toe.
+  wallscissor:
+    wall(96) +
+    figure({ at: ['hip', [90, 101]], torso: 180, head: 180, leg: [-138, -138, 135], farLeg: [-90, -90, 180], arm: [2, 0] }),
+
+  // Op de rug, voeten tegen de muur, hoofd en schouders op; pompen met de armen.
+  wallhundred:
+    wall(98) +
+    figure({ at: ['hip', [75.5, 101]], torso: 196, head: 208, leg: [-90, 0, -90], arm: [10, 4] }) +
+    `<path d="M57 76 v12 M53 80 L57 76 l4 4 M53 84 L57 88 l4 -4" fill="none" stroke="${COLOR.arrow}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`,
+
+  // Handen tegen de muur, één been gestrekt naar achteren.
+  wallkick:
+    wall(96) +
+    figure({ at: ['farAnkle', [65, 103]], torso: -78, head: -74, leg: [150, 150, 215], farLeg: [90, 90, 0], arm: [5, -5] }),
 };
 
 // ---------------- Wegschrijven ----------------

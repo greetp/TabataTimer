@@ -99,6 +99,38 @@ Goed om te weten:
    - **Samenvoegen** – voegt toe wat nog niet op het toestel staat. Niets wordt gewist.
    - **Alles vervangen** – wist alles op het toestel en zet de reservekopie in de plaats.
 
+## Promofilmpje
+
+In de map `promo/` staat alles om het promofilmpje te maken. Het filmpje is een webpagina (`promo/film.html`)
+die beeld per beeld wordt omgezet naar een video. Je hebt Node.js, Playwright en ffmpeg nodig.
+
+1. Start de app lokaal:
+
+   ```bash
+   python3 -m http.server 4173
+   ```
+
+2. Neem de schermen van de app op (met voorbeeldgegevens, geen echte namen):
+
+   ```bash
+   node promo/opnemen.js
+   ```
+
+3. Maak de staande video (1080 × 1920, voor WhatsApp en sociale media):
+
+   ```bash
+   node promo/maak-film.js staand
+   ```
+
+4. Maak de liggende video (1920 × 1080, voor de wachtzaal of de website):
+
+   ```bash
+   node promo/maak-film.js liggend
+   ```
+
+De video's komen in `promo/uit/`. De teksten pas je aan in `promo/film.html`; elke scène staat daar als een
+blok met haar eigen tekst. Na een wijziging aan de app zelf voer je stap 2 opnieuw uit, zodat de schermen kloppen.
+
 ## Hoe zit de code in elkaar?
 
 | Bestand | Wat doet het? |

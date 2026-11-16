@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<title>Tabata Timer – promofilmpje</title>
+<!--
+  promo/film.html — het promofilmpje als webpagina.
+
+  Elke scène staat hieronder als <section class="scene">. Het script onderaan
+  berekent voor elk moment (in seconden) hoe het beeld eruitziet. Het script
+  promo/maak-film.js vraagt zo beeld per beeld op en maakt er een video van.
+
+  Bekijken in de browser (met de app lokaal gestart op poort 4173):
+      http://127.0.0.1:4173/promo/film.html?layout=staand&speel=1
+      http://127.0.0.1:4173/promo/film.html?layout=liggend&speel=1
+
+  Teksten aanpassen? Dat kan rechtstreeks in de scènes hieronder.
+  Duur van een scène aanpassen? Zie de lijst SCENES in het script.
+-->
+<style>
+  :root {
+    --paper: #f7f5ef;
+    --surface: #fffef9;
+    --ink: #1a1b20;
+    --ink-soft: #484b50;
+    --petrol: #174d50;
+    --cyan: #87c7c6;
+    --cyan-soft: #dcefed;
+    --mint: #edf6f1;
+    --line: rgba(26, 27, 32, 0.14);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #000; }
+  body { font-family: "Inter", system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  /* ---- Het beeld: staand (1080 x 1920) of liggend (1920 x 1080) ---- */
+  #stage { position: relative; overflow: hidden; background: var(--paper); }
+  body.staand #stage { width: 1080px; height: 1920px; }
+  body.liggend #stage { width: 1920px; height: 1080px; }
+
+  /* ---- Achtergrond: zachte cyaan gloed en een dunne baan, zoals op de website ---- */
+  .glow { position: absolute; border-radius: 50%; filter: blur(60px); }
+  .glow--a { width: 1100px; height: 1100px; left: -420px; top: -460px; background: rgba(135, 199, 198, 0.55); }
+  .glow--b { width: 900px; height: 900px; right: -380px; bottom: -420px; background: rgba(135, 199, 198, 0.3); }
+  .orbit { position: absolute; left: 50%; top: 50%; width: 1500px; height: 900px; margin: -450px 0 0 -750px; border: 2px solid rgba(23, 77, 80, 0.13); border-radius: 50%; }
+
+  /* ---- Scènes ---- */
+  .scene { position: absolute; inset: 0; visibility: hidden; }
+  .copy { position: absolute; display: flex; flex-direction: column; }
+  body.staand .copy { left: 90px; right: 90px; top: 150px; }
+  body.liggend .copy { left: 130px; width: 830px; top: 0; bottom: 0; justify-content: center; }
+  body.staand .copy--center { top: 0; bottom: 0; justify-content: center; align-items: center; text-align: center; }
+  body.liggend .copy--center { left: 0; width: 100%; align-items: center; text-align: center; }
+
+  .eyebrow { display: flex; align-items: center; gap: 20px; margin: 0 0 30px; color: var(--petrol); font-size: 30px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+  .eyebrow::before { content: ""; width: 56px; height: 4px; border-radius: 4px; background: currentColor; }
+  .copy--center .eyebrow { justify-content: center; }
+
+  h1 { margin: 0; font-family: "Inter Display", "Inter", sans-serif; font-weight: 700; letter-spacing: -0.045em; line-height: 1.02; }
+  body.staand h1 { font-size: 104px; }
+  body.liggend h1 { font-size: 100px; }
+  h1 span { display: block; }
+
+  .sub { margin: 34px 0 0; color: var(--ink-soft); font-size: 42px; line-height: 1.38; letter-spacing: -0.01em; }
+  body.liggend .sub { font-size: 38px; }
+  .sub b { color: var(--petrol); font-weight: 700; }
+
+  /* ---- Scène 1: aftellen ---- */
+  .count { position: absolute; left: 50%; top: 50%; width: 520px; height: 520px; margin: -260px 0 0 -260px; display: grid; place-items: center; }
+  .count svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .count circle { fill: none; stroke-width: 26; }
+  .count span { font-family: "Inter Display", sans-serif; font-size: 300px; font-weight: 700; letter-spacing: -0.05em; color: var(--petrol); }
+  .logo { display: block; height: 150px; width: auto; margin-bottom: 70px; }
+  body.liggend .logo { height: 130px; margin-bottom: 56px; }
+
+  /* ---- Scène 2: balkjes werk / rust ---- */
+  .bars { display: flex; gap: 8px; margin-top: 44px; height: 40px; }
+  .bars i { display: block; height: 100%; border-radius: 12px; transform-origin: left center; }
+  .bars .w { flex: 2; background: var(--petrol); }
+  .bars .r { flex: 1; background: var(--cyan); }
+  .legend { display: flex; gap: 40px; margin-top: 22px; font-size: 30px; font-weight: 600; color: var(--ink-soft); }
+  .legend span { display: flex; align-items: center; gap: 14px; }
+  .legend span::before { content: ""; width: 26px; height: 26px; border-radius: 50%; background: var(--petrol); }
+  .legend span + span::before { background: var(--cyan); }
+
+  /* ---- Opsomming (scène 4) ---- */
+  .points { display: flex; flex-direction: column; gap: 18px; margin-top: 36px; }
+  .point { display: flex; align-items: center; gap: 24px; align-self: flex-start; padding: 20px 34px 20px 22px; border-radius: 999px; background: var(--surface); border: 2px solid var(--line); font-size: 36px; font-weight: 600; letter-spacing: -0.015em; box-shadow: 0 14px 40px rgba(25, 44, 43, 0.08); }
+  .point em { display: grid; place-items: center; flex: none; width: 60px; height: 60px; border-radius: 50%; background: var(--petrol); color: #fff; font-style: normal; font-size: 30px; font-weight: 700; }
+  body.liggend .point { font-size: 32px; }
+
+  /* ---- Stickers: de tekeningen van de oefeningen ---- */
+  .sticker { position: absolute; width: 230px; height: 230px; padding: 10px; border-radius: 46px; background: #fff; box-shadow: 0 22px 50px rgba(25, 44, 43, 0.18); }
+  .sticker svg { display: block; width: 100%; height: 100%; border-radius: 38px; }
+  .sticker--sm { width: 180px; height: 180px; padding: 8px; border-radius: 38px; }
+  .sticker--sm svg { border-radius: 31px; }
+
+  /* ---- Scène 8: stappen ---- */
+  .steps { display: flex; flex-direction: column; gap: 26px; margin-top: 54px; }
+  .step { display: flex; align-items: center; gap: 30px; padding: 30px 40px 30px 30px; border-radius: 44px; background: var(--surface); border: 2px solid var(--line); box-shadow: 0 18px 50px rgba(25, 44, 43, 0.09); }
+  .step em { display: grid; place-items: center; flex: none; width: 92px; height: 92px; border-radius: 50%; background: var(--petrol); color: #fff; font-family: "Inter Display", sans-serif; font-style: normal; font-size: 50px; font-weight: 700; }
+  .step p { margin: 0; font-size: 40px; font-weight: 600; line-height: 1.25; letter-spacing: -0.02em; }
+  .step p b { color: var(--petrol); }
+  .step svg { flex: none; width: 60px; height: 60px; margin-left: auto; color: var(--petrol); }
+  body.liggend .step p { font-size: 36px; }
+  .appicon { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 18px; font-size: 34px; font-weight: 600; }
+  .appicon img { width: 250px; height: 250px; border-radius: 58px; box-shadow: 0 30px 70px rgba(25, 44, 43, 0.3); }
+  body.staand .appicon { left: 50%; margin-left: -125px; bottom: 330px; }
+  body.liggend .appicon { left: 1330px; top: 50%; margin-top: -170px; }
+  body.liggend .appicon img { width: 300px; height: 300px; border-radius: 70px; }
+
+  /* ---- Scène 9: slot ---- */
+  .url { display: inline-block; margin-top: 50px; padding: 34px 60px; border-radius: 999px; background: var(--petrol); color: #fff; font-family: "Inter Display", sans-serif; font-size: 62px; font-weight: 700; letter-spacing: -0.03em; box-shadow: 0 26px 60px rgba(23, 77, 80, 0.32); }
+  .small { margin: 46px 0 0; color: var(--ink-soft); font-size: 32px; font-weight: 500; }
+  .dot { position: absolute; border-radius: 50%; }
+
+  /* ---- Geluidsgolven rond de telefoon bij het aftellen (scène 4) ---- */
+  .pulse { position: absolute; left: 0; top: 0; width: 760px; height: 760px; margin: -380px 0 0 -380px; border-radius: 50%; border: 12px solid var(--petrol); opacity: 0; }
+
+  /* ---- De telefoon ---- */
+  #phone { position: absolute; left: 0; top: 0; width: 528px; height: 1110px; margin: -555px 0 0 -264px; padding: 14px; border-radius: 86px; background: #15171b; box-shadow: 0 60px 120px rgba(25, 44, 43, 0.3), 0 0 0 3px rgba(255, 255, 255, 0.5) inset; will-change: transform; }
+  #screen { position: relative; width: 500px; height: 1082px; overflow: hidden; border-radius: 72px; background: var(--paper); }
+  #screen img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .island { position: absolute; left: 50%; top: 16px; width: 150px; height: 44px; margin-left: -75px; border-radius: 999px; background: #000; }
+  .status { position: absolute; left: 0; right: 0; top: 0; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 14px 46px 0 54px; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); }
+  .status svg { width: 86px; height: 22px; }
+  .status.is-light { color: #fff; }
+  .homebar { position: absolute; left: 50%; bottom: 10px; width: 178px; height: 7px; margin-left: -89px; border-radius: 99px; background: rgba(26, 27, 32, 0.85); }
+  .homebar.is-light { background: rgba(255, 255, 255, 0.92); }
+  #finger { position: absolute; left: 0; top: 0; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; background: rgba(255, 255, 255, 0.55); border: 5px solid rgba(23, 77, 80, 0.75); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28); opacity: 0; }
+  #ripple { position: absolute; left: 0; top: 0; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; border: 6px solid rgba(23, 77, 80, 0.6); opacity: 0; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="glow glow--a"></div>
+  <div class="glow glow--b"></div>
+  <div class="orbit"></div>
+
+  <!-- ============ Scène 1: aftellen en titel ============ -->
+  <section class="scene" id="intro">
+    <div class="count">
+      <svg viewBox="0 0 520 520"><circle cx="260" cy="260" r="240" stroke="#dcefed" /><circle id="countRing" cx="260" cy="260" r="240" stroke="#87c7c6" stroke-linecap="round" transform="rotate(-90 260 260)" /></svg>
+      <span id="countNumber">3</span>
+    </div>
+    <div class="copy copy--center" id="introCopy">
+      <img class="logo" src="../assets/logo-pvmt.png" alt="PVMT" data-at="2.0" data-fx="pop" />
+      <p class="eyebrow" data-at="2.25" data-fx="up">Nieuw van je gezondheidspraktijk</p>
+      <h1><span data-at="2.4" data-fx="up">Beweeg mee met</span><span data-at="2.55" data-fx="up">de Tabata Timer</span></h1>
+      <p class="sub" data-at="2.9" data-fx="up">Kort trainen, op jouw tempo.</p>
+    </div>
+    <div class="sticker" data-art="jumpingjack" data-at="3.1" data-fx="pop" data-pos="intro1"></div>
+    <div class="sticker" data-art="squat" data-at="3.25" data-fx="pop" data-pos="intro2"></div>
+    <div class="sticker sticker--sm" data-art="plank" data-at="3.4" data-fx="pop" data-pos="intro3"></div>
+    <div class="sticker sticker--sm" data-art="lunge" data-at="3.55" data-fx="pop" data-pos="intro4"></div>
+  </section>
+
+  <!-- ============ Scène 2: het idee ============ -->
+  <section class="scene" id="idee">
+    <div class="copy">
+      <p class="eyebrow" data-at="0.3" data-fx="up">Het idee</p>
+      <h1><span data-at="0.45" data-fx="up">Kort bewegen,</span><span data-at="0.6" data-fx="up">kort rusten</span></h1>
+      <p class="sub" data-at="1.0" data-fx="up"><b>20 seconden</b> werk, <b>10 seconden</b> rust. Acht keer na elkaar en je bent klaar in 4 minuten.</p>
+      <div class="bars" id="bars" data-at="1.5" data-fx="up"></div>
+      <div class="legend" data-at="1.7" data-fx="up"><span>Werk</span><span>Rust</span></div>
+    </div>
+  </section>
+
+  <!-- ============ Scène 3: kies een training ============ -->
+  <section class="scene" id="kies">
+    <div class="copy">
+      <p class="eyebrow" data-at="0.3" data-fx="up">Stap 1</p>
+      <h1><span data-at="0.45" data-fx="up">Kies een</span><span data-at="0.6" data-fx="up">training</span></h1>
+      <p class="sub" data-at="1.0" data-fx="up">Tik op de startknop en je bent vertrokken.</p>
+    </div>
+  </section>
+
+  <!-- ============ Scène 4: volg de timer ============ -->
+  <section class="scene" id="volg">
+    <div class="copy">
+      <p class="eyebrow" data-at="0.3" data-fx="up">Stap 2</p>
+      <h1><span data-at="0.45" data-fx="up">Volg de timer</span></h1>
+      <div class="points">
+        <div class="point" data-at="1.0" data-fx="left"><em>1</em>Grote cijfers, ook van ver te lezen</div>
+        <div class="point" data-at="2.3" data-fx="left"><em>2</em>Piepjes tellen af: 3, 2, 1</div>
+        <div class="point" data-at="4.7" data-fx="left"><em>3</em>Je ziet al wat er hierna komt</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Scène 5: tekening en uitleg ============ -->
+  <section class="scene" id="zie">
+    <div class="copy">
+      <p class="eyebrow" data-at="0.3" data-fx="up">Stap 3</p>
+      <h1><span data-at="0.45" data-fx="up">Zie hoe</span><span data-at="0.6" data-fx="up">het moet</span></h1>
+      <p class="sub" data-at="1.0" data-fx="up">Elke oefening heeft een tekening en een korte uitleg.</p>
+    </div>
+    <div class="sticker" data-art="squat" data-at="1.5" data-fx="pop" data-pos="zie1"></div>
+    <div class="sticker sticker--sm" data-art="pushup" data-at="1.75" data-fx="pop" data-pos="zie2"></div>
+    <div class="sticker" data-art="burpee" data-at="2.0" data-fx="pop" data-pos="zie3"></div>
+    <div class="sticker sticker--sm" data-art="bridge" data-at="2.25" data-fx="pop" data-pos="zie4"></div>
+  </section>
+
+  <!-- ============ Scène 6: eigen training ============ -->
+  <section class="scene" id="maak">
+    <div class="copy">
+      <p class="eyebrow" data-at="0.3" data-fx="up">Op jouw maat</p>
+      <h1><span data-at="0.45" data-fx="up">Maak je eigen</span><span data-at="0.6" data-fx="up">training</span></h1>
+      <p class="sub" data-at="1.0" data-fx="up">Kies zelf je tijden, je rondes en je oefeningen.</p>
+    </div>
+  </section>
+
+  <!-- ============ Scène 7: samen ============ -->
+  <section class="scene" id="samen">
+    <div class="copy">
+      <p class="eyebrow" data-at="0.3" data-fx="up">Samen</p>
+      <h1><span data-at="0.45" data-fx="up">Train met</span><span data-at="0.6" data-fx="up">wie je wil</span></h1>
+      <p class="sub" data-at="1.0" data-fx="up">Iedereen een eigen profiel. Een training doorsturen doe je met één bericht.</p>
+    </div>
+  </section>
+
+  <!-- ============ Scène 8: zo begin je ============ -->
+  <section class="scene" id="start">
+    <div class="copy">
+      <p class="eyebrow" data-at="0.3" data-fx="up">Zo begin je</p>
+      <h1><span data-at="0.45" data-fx="up">Zet de timer op</span><span data-at="0.6" data-fx="up">je iPhone</span></h1>
+      <div class="steps">
+        <div class="step" data-at="1.2" data-fx="left"><em>1</em><p>Open <b>timer.pvmtdankaerts.be</b> in Safari</p></div>
+        <div class="step" data-at="2.5" data-fx="left"><em>2</em><p>Tik op het deel-icoon</p>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></div>
+        <div class="step" data-at="3.8" data-fx="left"><em>3</em><p>Kies <b>Zet op beginscherm</b></p>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg></div>
+      </div>
+    </div>
+    <div class="appicon" data-at="5.0" data-fx="pop"><img src="../assets/icon-512.png" alt="" /><span>Tabata</span></div>
+  </section>
+
+  <!-- ============ Scène 9: slot ============ -->
+  <section class="scene" id="slot">
+    <div id="confetti"></div>
+    <div class="copy copy--center">
+      <img class="logo" src="../assets/logo-pvmt.png" alt="PVMT" data-at="0.3" data-fx="pop" />
+      <h1><span data-at="0.55" data-fx="up">Veel</span><span data-at="0.7" data-fx="up">beweegplezier!</span></h1>
+      <div><span class="url" data-at="1.2" data-fx="pop">timer.pvmtdankaerts.be</span></div>
+      <p class="small" data-at="1.7" data-fx="up">Een initiatief van PVMT · www.pvmtdankaerts.be</p>
+    </div>
+    <div class="sticker" data-art="jumpingjack" data-at="1.4" data-fx="pop" data-pos="slot1"></div>
+    <div class="sticker sticker--sm" data-art="highknees" data-at="1.6" data-fx="pop" data-pos="slot2"></div>
+    <div class="sticker sticker--sm" data-art="squat" data-at="1.8" data-fx="pop" data-pos="slot3"></div>
+    <div class="sticker" data-art="burpee" data-at="2.0" data-fx="pop" data-pos="slot4"></div>
+  </section>
+
+  <div class="pulse"></div><div class="pulse"></div><div class="pulse"></div><div class="pulse"></div>
+
+  <!-- ============ De telefoon (staat boven alle scènes) ============ -->
+  <div id="phone">
+    <div id="screen">
+      <img id="shotA" alt="" />
+      <img id="shotB" alt="" />
+      <div class="status" id="status"><span>9:41</span>
+        <svg viewBox="0 0 86 22" fill="currentColor"><rect x="0" y="13" width="4.5" height="7" rx="1.2"/><rect x="7" y="10" width="4.5" height="10" rx="1.2"/><rect x="14" y="6.5" width="4.5" height="13.5" rx="1.2"/><rect x="21" y="3" width="4.5" height="17" rx="1.2"/><path d="M41 7.5c3.2 0 6 1.3 8 3.300l-1.9 2c-1.6-1.600-3.700-2.500-6.100-2.500s-4.500.9-6.100 2.500l-1.900-2c2-2 4.800-3.300 8-3.300zm0 5.300c1.700 0 3.200.7 4.300 1.800L41 19l-4.300-4.400c1.100-1.100 2.600-1.800 4.300-1.800z"/><rect x="56" y="4" width="25" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".5"/><rect x="58.200" y="6.200" width="20.600" height="9.600" rx="2.400"/><rect x="82.500" y="8.500" width="2.500" height="5" rx="1.200" opacity=".5"/></svg>
+      </div>
+      <div class="island"></div>
+      <div class="homebar" id="homebar"></div>
+      <div id="ripple"></div>
+      <div id="finger"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { ART } from '../js/library-art.js';
+
+// ---------------- Instellingen ----------------
+const params = new URLSearchParams(location.search);
+const LAYOUT = params.get('layout') === 'liggend' ? 'liggend' : 'staand';
+document.body.className = LAYOUT;
+const FPS = 30;
+
+// De scènes en hoe lang ze duren (in seconden).
+const SCENES = [
+  { id: 'intro', dur: 5.4 },
+  { id: 'idee', dur: 8.0 },
+  { id: 'kies', dur: 6.6 },
+  { id: 'volg', dur: 9.0 },
+  { id: 'zie', dur: 6.6 },
+  { id: 'maak', dur: 7.0 },
+  { id: 'samen', dur: 7.0 },
+  { id: 'start', dur: 8.4 },
+  { id: 'slot', dur: 5.6 },
+];
+let clock = 0;
+for (const scene of SCENES) {
+  scene.start = clock;
+  scene.el = document.getElementById(scene.id);
+  clock += scene.dur;
+}
+const TOTAL = clock;
+const sceneStart = (id) => SCENES.find((s) => s.id === id).start;
+
+// ---------------- Hulpfuncties voor beweging ----------------
+const clamp = (x) => Math.max(0, Math.min(1, x));
+const span = (t, a, b) => clamp((t - a) / (b - a)); // 0 vóór a, 1 na b
+const easeOut = (p) => 1 - Math.pow(1 - p, 3);
+const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+const overshoot = (p) => 1 + 2.2 * Math.pow(p - 1, 3) + 1.2 * Math.pow(p - 1, 2); // schiet even door: "pop"
+const mix = (a, b, p) => a + (b - a) * p;
+
+// ---------------- Stickers: tekening en plaats ----------------
+// Plaats per sticker: [x, y, draaiing] voor staand en liggend beeld.
+const SPOTS = {
+  staand: {
+    intro1: [70, 1300, -8], intro2: [780, 1330, 7], intro3: [330, 1560, 5], intro4: [590, 1580, -6],
+    zie1: [10, 760, -9], zie2: [860, 700, 8], zie3: [830, 1560, 7], zie4: [20, 1590, -6],
+    slot1: [80, 150, -8], slot2: [830, 210, 8], slot3: [120, 1560, 6], slot4: [760, 1530, -7],
+  },
+  liggend: {
+    intro1: [130, 120, -8], intro2: [1560, 150, 7], intro3: [240, 780, 6], intro4: [1500, 760, -6],
+    zie1: [1010, 80, -9], zie2: [1700, 130, 8], zie3: [1660, 760, 7], zie4: [1010, 800, -6],
+    slot1: [140, 110, -8], slot2: [1590, 150, 8], slot3: [210, 770, 6], slot4: [1540, 740, -7],
+  },
+};
+document.querySelectorAll('.sticker').forEach((el, i) => {
+  el.innerHTML = ART[el.dataset.art];
+  const [x, y, rot] = SPOTS[LAYOUT][el.dataset.pos];
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  el.dataset.rot = rot;
+  el.dataset.phase = i * 1.7;
+});
+
+// Balkjes van scène 2: acht keer werk + rust.
+const bars = document.getElementById('bars');
+for (let i = 0; i < 8; i++) bars.insertAdjacentHTML('beforeend', '<i class="w"></i><i class="r"></i>');
+
+// Confetti voor het slot: bolletjes in de kleuren van PVMT.
+const confetti = document.getElementById('confetti');
+const W = LAYOUT === 'staand' ? 1080 : 1920;
+const H = LAYOUT === 'staand' ? 1920 : 1080;
+const DOTS = [];
+for (let i = 0; i < 34; i++) {
+  const rnd = (n) => ((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1; // vaste "toevals"getallen
+  const dot = document.createElement('i');
+  dot.className = 'dot';
+  const size = 16 + rnd(1) * 30;
+  dot.style.cssText = `width:${size}px;height:${size}px;background:${['#174d50', '#87c7c6', '#dcefed', '#c58f62'][i % 4]}`;
+  confetti.append(dot);
+  DOTS.push({ dot, x: (i % 2 ? 0.02 + rnd(2) * 0.2 : 0.78 + rnd(2) * 0.2) * W, // alleen links en rechts, niet over de tekst
+    delay: rnd(3) * 1.6, speed: 0.55 + rnd(4) * 0.5, sway: rnd(5) * 6.28, size });
+}
+
+// ---------------- De telefoon ----------------
+// Waar de telefoon staat: [x, y, grootte, draaiing].
+const SPOT = {
+  staand: { weg: [540, 2700, 0.9, 0], midden: [540, 1345, 0.9, 0], links: [525, 1345, 0.9, -3], rechts: [555, 1345, 0.9, 3], groot: [540, 1340, 0.93, 0] },
+  liggend: { weg: [1420, 1750, 0.86, 0], midden: [1420, 540, 0.86, 0], links: [1400, 540, 0.86, -3], rechts: [1440, 540, 0.86, 3], groot: [1420, 540, 0.9, 0] },
+}[LAYOUT];
+const PHONE = [
+  ['intro', 'weg'], ['idee', 'midden'], ['kies', 'links'], ['volg', 'groot'], ['zie', 'rechts'],
+  ['maak', 'links'], ['samen', 'rechts'], ['start', 'weg'], ['slot', 'weg'],
+].map(([id, spot]) => ({ at: sceneStart(id), spot }));
+
+// Wat er op het scherm van de telefoon staat, en vanaf wanneer.
+//   file  = een stilstaand beeld uit promo/shots
+//   seq   = een opname van de timer (map met beelden), "from" = vanaf welke seconde van die opname
+//   light = true als de statusbalk witte letters moet hebben (donker scherm)
+const seq = (name, from, lightFrom, lightTo) => ({ seq: name, from, lightFrom, lightTo });
+const CLIPS = [
+  { at: 0, file: 'home' },
+  { at: sceneStart('idee'), ...seq('timer-a', 0.4, 3.45, 99) }, // voorbereiding -> werk "Squats"
+  { at: sceneStart('kies'), file: 'home' },
+  { at: sceneStart('kies') + 3.9, ...seq('timer-a', 0, 3.45, 99) }, // na de tik: de timer start
+  { at: sceneStart('volg'), ...seq('timer-b', 0, 0, 3.95) }, // 3-2-1 -> rust
+  { at: sceneStart('zie'), file: 'uitleg' },
+  { at: sceneStart('maak'), file: 'bewerken-tijden' },
+  { at: sceneStart('maak') + 2.6, file: 'bewerken-oefeningen' },
+  { at: sceneStart('maak') + 4.6, file: 'bibliotheek' },
+  { at: sceneStart('samen'), file: 'profielen' },
+  { at: sceneStart('samen') + 3.6, file: 'delen' },
+];
+const SEQ_LENGTH = { 'timer-a': 240, 'timer-b': 255 };
+const FADE = 0.4;
+
+function clipImage(clip, t) {
+  if (clip.file) return { src: `shots/${clip.file}.jpg`, light: false };
+  const seconds = clip.from + Math.max(0, t - clip.at);
+  const frame = Math.min(SEQ_LENGTH[clip.seq] - 1, Math.round(seconds * FPS));
+  return { src: `shots/${clip.seq}/${String(frame).padStart(4, '0')}.jpg`, light: seconds >= clip.lightFrom && seconds < clip.lightTo };
+}
+
+// De vinger die op de startknop tikt (scène 3). Plaats in punten van het app-scherm (390 breed).
+const TAP = { at: sceneStart('kies') + 2.5, from: [300, 640], to: [337, 421], press: 1.15 };
+
+const el = (id) => document.getElementById(id);
+const phone = el('phone');
+const shotA = el('shotA');
+const shotB = el('shotB');
+async function show(img, src) {
+  if (img.dataset.src === src) return;
+  img.dataset.src = src;
+  img.src = src;
+  await img.decode().catch(() => {});
+}
+
+// ---------------- Eén beeld tekenen ----------------
+// t = het moment in het filmpje, in seconden.
+window.renderFrame = async (t) => {
+  // Achtergrond beweegt traag mee.
+  document.querySelector('.orbit').style.transform = `rotate(${-18 + t * 2.2}deg) scale(${1 + Math.sin(t * 0.3) * 0.04})`;
+  document.querySelector('.glow--a').style.transform = `translate(${Math.sin(t * 0.25) * 60}px, ${Math.cos(t * 0.2) * 50}px)`;
+  document.querySelector('.glow--b').style.transform = `translate(${Math.cos(t * 0.22) * 70}px, ${Math.sin(t * 0.27) * 50}px)`;
+
+  // ---- Scènes: elk element komt binnen op zijn eigen moment (data-at) ----
+  for (const scene of SCENES) {
+    const local = t - scene.start;
+    const visible = local >= 0 && local < scene.dur;
+    scene.el.style.visibility = visible ? 'visible' : 'hidden';
+    if (!visible) continue;
+    const last = scene === SCENES[SCENES.length - 1];
+    const out = last ? 0 : easeInOut(span(local, scene.dur - 0.45, scene.dur)); // de scène verdwijnt
+    scene.el.style.opacity = 1 - out;
+    scene.el.style.transform = `translateY(${-30 * out}px)`;
+
+    scene.el.querySelectorAll('[data-at]').forEach((node) => {
+      const p = span(local, Number(node.dataset.at), Number(node.dataset.at) + 0.55);
+      const e = easeOut(p);
+      let transform = '';
+      if (node.dataset.fx === 'up') transform = `translateY(${(1 - e) * 46}px)`;
+      if (node.dataset.fx === 'left') transform = `translateX(${(1 - e) * -70}px)`;
+      if (node.dataset.fx === 'pop') transform = `scale(${p === 0 ? 0 : 0.5 + 0.5 * overshoot(p)})`;
+      if (node.classList.contains('sticker')) {
+        // Stickers dobberen en wiebelen zachtjes.
+        const phase = Number(node.dataset.phase);
+        const bob = Math.sin(t * 2.4 + phase) * 12;
+        const hop = Math.max(0, Math.sin(t * 4.8 + phase)) * -10;
+        transform = `translateY(${bob + hop}px) rotate(${Number(node.dataset.rot) + Math.sin(t * 1.7 + phase) * 3}deg) ${transform}`;
+      }
+      node.style.opacity = clamp(p * 1.6);
+      node.style.transform = transform;
+    });
+  }
+
+  // ---- Scène 1: 3, 2, 1 ----
+  {
+    const local = t - sceneStart('intro');
+    const count = document.querySelector('.count');
+    const beat = 0.6;
+    const index = Math.floor(local / beat); // 0, 1, 2
+    const p = (local % beat) / beat;
+    const active = local >= 0 && index < 3;
+    count.style.opacity = active ? 1 : clamp(1 - span(local, 3 * beat, 3 * beat + 0.25));
+    count.style.transform = `scale(${active ? 1 : 1 + span(local, 3 * beat, 3 * beat + 0.25) * 0.5})`;
+    if (active) {
+      el('countNumber').textContent = 3 - index;
+      el('countNumber').style.transform = `scale(${0.7 + 0.3 * overshoot(clamp(p * 2.2))})`;
+      const length = 2 * Math.PI * 240;
+      el('countRing').style.strokeDasharray = length;
+      el('countRing').style.strokeDashoffset = length * easeInOut(p);
+    }
+  }
+
+  // ---- Scène 2: de balkjes vullen zich één voor één ----
+  {
+    const local = t - sceneStart('idee');
+    [...bars.children].forEach((bar, i) => {
+      bar.style.transform = `scaleX(${easeOut(span(local, 1.9 + i * 0.22, 2.2 + i * 0.22))})`;
+    });
+  }
+
+  // ---- Scène 9: confetti ----
+  {
+    const local = t - sceneStart('slot');
+    for (const d of DOTS) {
+      const fall = Math.max(0, local - d.delay);
+      d.dot.style.left = `${d.x + Math.sin(fall * 2 + d.sway) * 40}px`;
+      d.dot.style.top = `${-60 + fall * d.speed * (H / 2.6)}px`;
+      d.dot.style.opacity = local > d.delay ? 0.9 : 0;
+    }
+  }
+
+  // ---- De telefoon: plaats ----
+  {
+    let index = 0;
+    while (index < PHONE.length - 1 && PHONE[index + 1].at <= t) index++;
+    const now = SPOT[PHONE[index].spot];
+    const before = SPOT[PHONE[Math.max(0, index - 1)].spot];
+    const p = easeInOut(span(t, PHONE[index].at, PHONE[index].at + 0.8));
+    const float = Math.sin(t * 1.3) * 8; // zweeft heel licht
+    const [x, y, size, rot] = now.map((value, i) => mix(before[i], value, p));
+    phone.style.transform = `translate(${x}px, ${y + float}px) rotate(${rot + Math.sin(t * 0.9) * 0.6}deg) scale(${size})`;
+
+    // Geluidsgolven op de tel van 3, 2, 1 en een grotere bij de start van de rust (scène 4).
+    const local = t - sceneStart('volg');
+    document.querySelectorAll('.pulse').forEach((pulse, i) => {
+      const p = span(local, 1 + i, 1 + i + (i === 3 ? 1.1 : 0.75));
+      pulse.style.opacity = p > 0 && p < 1 ? (1 - p) * (i === 3 ? 0.5 : 0.32) : 0;
+      pulse.style.transform = `translate(${x}px, ${y}px) scale(${size * mix(0.75, i === 3 ? 1.7 : 1.3, easeOut(p))})`;
+    });
+  }
+
+  // ---- De telefoon: wat er op het scherm staat ----
+  {
+    let index = 0;
+    while (index < CLIPS.length - 1 && CLIPS[index + 1].at <= t) index++;
+    const current = CLIPS[index];
+    const fade = index === 0 ? 1 : span(t, current.at, current.at + FADE);
+    const now = clipImage(current, t);
+    if (fade < 1) {
+      const before = clipImage(CLIPS[index - 1], current.at); // het vorige beeld blijft even staan
+      await show(shotA, before.src);
+      shotA.style.opacity = 1;
+    } else {
+      shotA.style.opacity = 0;
+    }
+    await show(shotB, now.src);
+    shotB.style.opacity = fade;
+    el('status').classList.toggle('is-light', now.light);
+    el('homebar').classList.toggle('is-light', now.light);
+  }
+
+  // ---- De vinger die tikt ----
+  {
+    const local = t - TAP.at;
+    const scale = 500 / 390; // van punten van de app naar pixels van het telefoonscherm
+    const move = easeInOut(span(local, 0, 0.9));
+    const x = mix(TAP.from[0], TAP.to[0], move) * scale;
+    const y = mix(TAP.from[1], TAP.to[1], move) * scale;
+    const press = span(local, TAP.press - 0.12, TAP.press) - span(local, TAP.press, TAP.press + 0.2);
+    const finger = el('finger');
+    finger.style.opacity = local > 0 && local < TAP.press + 0.55 ? clamp(local * 4) * (1 - span(local, TAP.press + 0.3, TAP.press + 0.55)) : 0;
+    finger.style.transform = `translate(${x}px, ${y}px) scale(${1 - 0.28 * press})`;
+    const ring = span(local, TAP.press, TAP.press + 0.5);
+    const ripple = el('ripple');
+    ripple.style.opacity = ring > 0 && ring < 1 ? 1 - ring : 0;
+    ripple.style.transform = `translate(${TAP.to[0] * scale}px, ${TAP.to[1] * scale}px) scale(${1 + ring * 1.6})`;
+  }
+};
+
+window.FILM = { total: TOTAL, fps: FPS, layout: LAYOUT, scenes: SCENES.map((s) => ({ id: s.id, start: s.start, dur: s.dur })) };
+
+// Wachten tot de lettertypes geladen zijn, dan het eerste beeld tonen.
+await document.fonts.ready;
+const startAt = Number(params.get('t') || 0);
+await window.renderFrame(startAt);
+window.READY = true;
+
+// Met ?speel=1 speelt het filmpje gewoon af in de browser (om te bekijken).
+if (params.get('speel')) {
+  const begin = performance.now() - startAt * 1000;
+  const loop = async () => {
+    await window.renderFrame(((performance.now() - begin) / 1000) % TOTAL);
+    requestAnimationFrame(loop);
+  };
+  loop();
+}
+</script>
+</body>
+</html>

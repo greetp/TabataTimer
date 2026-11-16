@@ -8,7 +8,7 @@
 // zie je een nieuwe versie niet meteen.
 // ---------------------------------------------------------------
 
-const CACHE = 'tabata-timer-v10';
+const CACHE = 'tabata-timer-v11';
 
 const FILES = [
   './',
@@ -28,6 +28,7 @@ const FILES = [
   './version.json',
   './assets/logo-pvmt.png',
   './assets/icon-180.png',
+  './apple-touch-icon.png',
   './assets/icon-192.png',
   './assets/icon-512.png',
 ];

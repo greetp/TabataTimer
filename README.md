@@ -193,6 +193,7 @@ blok met haar eigen tekst. Na een wijziging aan de app zelf voer je stap 2 opnie
 | `promo/` | Scripts en pagina's om het promofilmpje en de uitlegfilmpjes te maken. De app zelf heeft ze niet nodig. |
 | `version.json` | Het versienummer van de app. |
 | `assets/` | Logo en app-iconen. |
+| `apple-touch-icon.png`, `favicon.ico` | Het app-icoon in de hoofdmap, waar browsers het standaard zoeken. |
 
 ### Een nieuwe versie uitbrengen
 

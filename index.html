@@ -16,8 +16,12 @@
   <meta name="apple-mobile-web-app-title" content="Tabata" />
 
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="assets/icon-180.png" />
-  <link rel="icon" type="image/png" href="assets/icon-192.png" />
+  <!-- Het icoon voor op het beginscherm. Naast deze regel staat het bestand ook als
+       apple-touch-icon.png in de hoofdmap: sommige browsers (zoals Chrome op een iPhone)
+       zoeken het daar en tonen anders een grijs icoon. -->
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
+  <link rel="icon" href="favicon.ico" sizes="48x48" />
   <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>

@@ -20,6 +20,8 @@ export const LIBRARY = [
   { id: 'jumpsquat', group: 'Benen', name: 'Jump squats', note: 'Zak door je knieën en spring krachtig omhoog. Land zacht en ga meteen door.' },
   { id: 'lunge', group: 'Benen', name: 'Lunges', note: 'Stap ver naar voren en zak tot beide knieën gebogen zijn. Wissel van been.' },
   { id: 'bridge', group: 'Benen', name: 'Bruggetje', note: 'Lig op je rug met gebogen knieën. Duw je heupen omhoog en laat ze rustig zakken.' },
+  { id: 'singlebridge', group: 'Benen', name: 'Bruggetje op één been', note: 'Lig op je rug, één voet op de grond en het andere been gestrekt omhoog. Duw je heupen omhoog en laat ze langzaam zakken. Wissel van been.' },
+  { id: 'sidelegraise', group: 'Benen', name: 'Beenheffen in zijlig', note: 'Lig op je zij met gestrekte benen. Til je bovenste been op en laat het langzaam zakken. Wissel van kant.' },
 
   { id: 'plank', group: 'Romp', name: 'Plank', note: 'Steun op je onderarmen en tenen. Span je buik aan en hou je lichaam recht.' },
   { id: 'sideplank', group: 'Romp', name: 'Zijplank', note: 'Steun op één hand of onderarm, lichaam in één lijn. Wissel halverwege van kant.' },

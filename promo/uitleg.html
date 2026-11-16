@@ -307,7 +307,7 @@ const REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 const places = await (await fetch('shots/hulp/plaatsen.json')).json();
 const FILMS = {
   installeren: [
-    { shot: 'safari', dur: 4.2, n: 1, text: 'Open <b>timer.pvmtdankaerts.be</b> in Safari' },
+    { shot: 'safari', dur: 4.2, n: 1, text: 'Open <b>timer.pvmtdankaerts.be</b> in je browser', small: 'Bijvoorbeeld Safari of Chrome.' },
     { shot: 'menu', dur: 5.4, n: 2, text: 'Tik op de <b>drie puntjes</b> en kies <b>Deel</b>', small: 'Zie je het deel-icoon al in de balk? Tik daar dan meteen op.', taps: [{ at: 1.3, to: [355, 795] }, { at: 3.9, to: [250, 643] }] },
     { shot: 'deelvenster', dur: 5.0, n: 3, text: 'Kies <b>Zet op beginscherm</b>', small: 'Soms moet je in de lijst wat naar beneden vegen.', taps: [{ at: 3.3, to: [170, 565] }] },
     { shot: 'toevoegen', dur: 4.2, n: 4, text: 'Tik rechtsboven op <b>Voeg toe</b>', taps: [{ at: 2.5, to: [333, 89] }] },

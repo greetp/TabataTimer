@@ -13,7 +13,7 @@
 import { store, AVATAR_COLORS, readBackup, newId, cleanUrl, exerciseFromLibrary } from './store.js';
 import { images, shrinkImage } from './images.js';
 import { LIBRARY, LIBRARY_GROUPS, libraryImage } from './library.js';
-import { buildPhases, totalSeconds, formatTime, Runner, PHASE_LABELS } from './timer.js';
+import { buildPhases, totalSeconds, formatTime, Runner, phaseLabel } from './timer.js';
 import { sound } from './sound.js';
 import { encodeWorkout, decodeWorkout, shareUrl, shareMessage } from './share.js';
 
@@ -87,6 +87,7 @@ const icon = {
   image: line('<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/>'),
   info: line('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.8v.2"/>'),
   chevron: line('<path d="M9 5l7 7-7 7"/>'),
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   up: line('<path d="M6 14.5l6-6 6 6"/>'),
   down: line('<path d="M6 9.5l6 6 6-6"/>'),
   refresh: line('<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/>'),
@@ -142,10 +143,17 @@ function stats(sessions) {
 }
 
 function workoutSummary(w) {
-  const parts = [`${w.rounds} ${w.rounds === 1 ? 'ronde' : 'rondes'}`, `${shortTime(w.work)} werk`, `${shortTime(w.rest)} rust`];
-  if (w.sets > 1) parts.push(`${w.sets} sets`);
+  const perExercise = w.order === 'exercise';
+  const byReps = w.workMode === 'reps';
+  const parts = [perExercise ? plural(w.rounds, 'oefening', 'oefeningen') : plural(w.rounds, 'ronde', 'rondes')];
+  parts.push(byReps ? `${w.reps || 12}× per ${perExercise ? 'set' : 'oefening'}` : `${shortTime(w.work)} werk`);
+  parts.push(`${shortTime(w.rest)} rust`);
+  if (w.sets > 1) parts.push(perExercise ? `${w.sets} sets per oefening` : `${w.sets} sets`);
   return parts.join(' · ');
 }
+
+// Hoe lang een training duurt. Bij werk op aantal hangt dat af van je eigen tempo.
+const durationText = (w) => (w.workMode === 'reps' ? 'Op aantal' : `${formatTime(totalSeconds(w))} min`);
 
 // ============ 2. De schermen ============
 
@@ -220,7 +228,7 @@ function viewHome(user) {
       <button class="workout-main" data-action="edit-workout" data-id="${w.id}" aria-label="${esc(w.name)} bewerken">
         <h3>${esc(w.name)}</h3>
         <p>${workoutSummary(w)}</p>
-        <span class="pill">${formatTime(totalSeconds(w))} min</span>
+        <span class="pill">${durationText(w)}</span>
         ${w.exercises?.length ? `<span class="pill pill--muted">${plural(w.exercises.length, 'oefening', 'oefeningen')}</span>` : ''}
       </button>
       <button class="round-btn round-btn--primary" data-action="start-workout" data-id="${w.id}" aria-label="${esc(w.name)} starten">${icon.play}</button>
@@ -441,19 +449,43 @@ function viewProfile(user) {
 // ============ 3. Training bewerken ============
 
 // De instelbare onderdelen van een training, in de volgorde van het scherm.
+// "label" en "hint" zijn de teksten voor een circuit; bij "per oefening" gelden die uit fieldText().
 const FIELDS = [
   { key: 'prepare', label: 'Voorbereiding', hint: 'Tijd om klaar te staan', kind: 'time', min: 0, max: 3600 },
   { key: 'work', label: 'Werk', hint: 'Zo lang geef je alles', kind: 'time', min: 1, max: 3600 },
+  { key: 'reps', label: 'Herhalingen', hint: 'Aantal per oefening', kind: 'count', min: 1, max: 200 },
   { key: 'rest', label: 'Rust', hint: 'Pauze na elke ronde', kind: 'time', min: 0, max: 3600 },
   { key: 'rounds', label: 'Rondes', hint: 'Aantal keer werk + rust', kind: 'count', min: 1, max: 99 },
   { key: 'sets', label: 'Sets', hint: 'Herhaal alle rondes', kind: 'count', min: 1, max: 20 },
   { key: 'setRest', label: 'Rust tussen sets', hint: 'Langere pauze na elke set', kind: 'time', min: 0, max: 3600 },
   { key: 'cooldown', label: 'Cooling-down', hint: 'Rustig uitbewegen', kind: 'time', min: 0, max: 3600 },
 ];
-const DOTS = { prepare: 'prepare', work: 'work', rest: 'rest', setRest: 'rest', cooldown: 'cooldown' };
+const DOTS = { prepare: 'prepare', work: 'work', reps: 'work', rest: 'rest', setRest: 'rest', cooldown: 'cooldown' };
+
+// Bij "per oefening" betekenen sommige velden iets anders: dan krijgen ze een andere naam.
+const PER_EXERCISE_TEXT = {
+  reps: ['Herhalingen', 'Aantal per set'],
+  rest: ['Rust tussen sets', 'Pauze na elke set'],
+  rounds: ['Oefeningen', 'Aantal verschillende oefeningen'],
+  sets: ['Sets per oefening', 'Zo vaak doe je elke oefening'],
+  setRest: ['Rust tussen oefeningen', 'Pauze voor de volgende oefening'],
+};
+const fieldText = (f, draft) => (draft.order === 'exercise' && PER_EXERCISE_TEXT[f.key]) || [f.label, f.hint];
+
+// De twee keuzes bovenaan het bewerkscherm, met hun uitleg.
+const CHOICES = {
+  workMode: {
+    time: ['Op tijd', 'Elke oefening duurt een vaste tijd en de timer telt af.'],
+    reps: ['Op aantal', 'Je doet een aantal herhalingen en tikt op Klaar. Daarna loopt de rust vanzelf af.'],
+  },
+  order: {
+    circuit: ['Als circuit', 'Je doet alle oefeningen na elkaar en herhaalt dat per set.'],
+    exercise: ['Per oefening', 'Je doet eerst alle sets van één oefening, dan de volgende.'],
+  },
+};
 
 function newDraft(userId) {
-  return { userId, name: '', group: '', prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 60, cooldown: 0, exercises: [] };
+  return { userId, name: '', group: '', prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 60, cooldown: 0, workMode: 'time', reps: 12, order: 'circuit', exercises: [] };
 }
 
 function viewEdit(user) {
@@ -463,7 +495,7 @@ function viewEdit(user) {
   const field = (f) => `<div class="field" data-field="${f.key}">
       <div class="field-label">
         ${DOTS[f.key] ? `<span class="dot dot--${DOTS[f.key]}"></span>` : '<span class="dot dot--none"></span>'}
-        <div><strong>${f.label}</strong><small>${f.hint}</small></div>
+        <div><strong data-label="${f.key}">${f.label}</strong><small data-hint="${f.key}">${f.hint}</small></div>
       </div>
       <div class="stepper">
         <button type="button" class="step" data-step="-1" data-key="${f.key}" aria-label="${f.label} verlagen">${icon.minus}</button>
@@ -494,6 +526,20 @@ function viewEdit(user) {
         : ''
     }
 
+    <h2 class="eyebrow section-gap">Opbouw</h2>
+    ${Object.entries(CHOICES)
+      .map(
+        ([key, options]) => `<div class="choice">
+          <div class="segmented" role="group" aria-label="${key === 'workMode' ? 'Werk op tijd of op aantal' : 'Volgorde van de oefeningen'}">
+            ${Object.entries(options)
+              .map(([value, [label]]) => `<button type="button" data-action="set-choice" data-key="${key}" data-value="${value}">${label}</button>`)
+              .join('')}
+          </div>
+          <p class="muted hint" data-choice-hint="${key}"></p>
+        </div>`
+      )
+      .join('')}
+
     <h2 class="eyebrow section-gap">Intervallen</h2>
     <div class="list list--fields">${FIELDS.map(field).join('')}</div>
     <p class="muted hint">Tip: tik op een getal om het zelf in te typen, of hou + of − ingedrukt.</p>
@@ -516,7 +562,7 @@ function viewEdit(user) {
 
   <footer class="savebar">
     <div class="savebar-info">
-      <span>Totale tijd</span>
+      <span id="draftTotalLabel">Totale tijd</span>
       <strong id="draftTotal"></strong>
     </div>
     <div class="timeline" id="draftTimeline" aria-hidden="true"></div>
@@ -531,17 +577,44 @@ function viewEdit(user) {
 // opnieuw te tekenen (anders zou je de cursor in het naamveld verliezen).
 function refreshEditor() {
   const d = ui.draft;
+  // Oudere trainingen hebben deze keuzes nog niet: dan gelden de gewone waarden.
+  d.workMode = d.workMode === 'reps' ? 'reps' : 'time';
+  d.order = d.order === 'exercise' ? 'exercise' : 'circuit';
+  d.reps = d.reps || 12;
+  const perExercise = d.order === 'exercise';
+  const byReps = d.workMode === 'reps';
+  const exerciseCount = (d.exercises || []).length;
+  // Bij "per oefening" is het aantal oefeningen gewoon het aantal dat je toevoegde.
+  if (perExercise && exerciseCount) d.rounds = Math.min(99, exerciseCount);
+
+  // De twee keuzes bovenaan: de gekozen knop aanduiden en de uitleg tonen.
+  app.querySelectorAll('[data-action="set-choice"]').forEach((button) => {
+    const active = d[button.dataset.key] === button.dataset.value;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', active);
+  });
+  for (const key of Object.keys(CHOICES)) app.querySelector(`[data-choice-hint="${key}"]`).textContent = CHOICES[key][d[key]][1];
+
   for (const f of FIELDS) {
     const input = app.querySelector(`[data-input="${f.key}"]`);
     if (input && document.activeElement !== input) input.value = f.kind === 'time' ? formatTime(d[f.key]) : d[f.key];
+    const [label, hint] = fieldText(f, d);
+    app.querySelector(`[data-label="${f.key}"]`).textContent = label;
+    app.querySelector(`[data-hint="${f.key}"]`).textContent = hint;
   }
-  // "Rust tussen sets" heeft alleen zin bij meer dan één set.
-  app.querySelector('[data-field="setRest"]').hidden = d.sets < 2;
+  // Alleen de velden tonen die bij de gekozen opbouw horen.
+  const show = (key, visible) => (app.querySelector(`[data-field="${key}"]`).hidden = !visible);
+  show('work', !byReps);
+  show('reps', byReps);
+  show('rounds', !(perExercise && exerciseCount)); // volgt dan vanzelf uit de lijst met oefeningen
+  show('setRest', perExercise ? d.rounds > 1 : d.sets > 1); // de lange rust heeft alleen zin als er iets op volgt
 
   const phases = buildPhases(d);
+  app.querySelector('#draftTotalLabel').textContent = byReps ? 'Rust in totaal' : 'Totale tijd';
   app.querySelector('#draftTotal').textContent = `${formatTime(phases.reduce((sum, p) => sum + p.duration, 0))} min`;
+  // Werk op aantal heeft geen duur; in de tijdlijn krijgt het een vaste breedte.
   app.querySelector('#draftTimeline').innerHTML =
-    phases.length <= 160 ? phases.map((p) => `<i class="seg seg--${p.type}" style="flex-grow:${p.duration}"></i>`).join('') : '<i class="seg seg--work" style="flex-grow:1"></i>';
+    phases.length <= 160 ? phases.map((p) => `<i class="seg seg--${p.type}" style="flex-grow:${p.untimed ? 20 : p.duration}"></i>`).join('') : '<i class="seg seg--work" style="flex-grow:1"></i>';
 
   refreshExercises();
 }
@@ -554,7 +627,8 @@ function refreshExercises() {
 
   const row = (e, i) => {
     const src = exerciseImage(e);
-    const details = [e.note || 'Geen uitleg', e.video ? 'met filmpje' : ''].filter(Boolean).join(' · ');
+    const repsText = d.workMode === 'reps' ? `${e.reps || d.reps}×` : '';
+    const details = [repsText, e.note || 'Geen uitleg', e.video ? 'met filmpje' : ''].filter(Boolean).join(' · ');
     return `<div class="exercise">
       <button class="exercise-main" data-action="edit-exercise" data-id="${e.id}" aria-label="${esc(e.name)} bewerken">
         ${src ? `<img class="thumb" src="${esc(src)}" alt="" />` : `<span class="thumb thumb--empty">${i + 1}</span>`}
@@ -573,11 +647,12 @@ function refreshExercises() {
   // Uitleg over hoe oefeningen en rondes samenhangen.
   const rounds = d.rounds;
   let hint;
-  if (!count) hint = 'Voeg oefeningen toe als je tijdens de timer wil zien wat je moet doen. Zonder oefeningen toont de timer gewoon "Werk".';
+  if (count && d.order === 'exercise') hint = `Je doet ${plural(d.sets, 'set', 'sets')} van elke oefening, in deze volgorde.`;
+  else if (!count) hint = 'Voeg oefeningen toe als je tijdens de timer wil zien wat je moet doen. Zonder oefeningen toont de timer gewoon "Werk".';
   else if (count === rounds) hint = 'Elke ronde heeft haar eigen oefening.';
   else if (count < rounds) hint = `Je hebt ${plural(rounds, 'ronde', 'rondes')} en ${plural(count, 'oefening', 'oefeningen')}. De oefeningen herhalen zich in dezelfde volgorde.`;
   else hint = `Je hebt ${plural(count, 'oefening', 'oefeningen')} maar ${plural(rounds, 'ronde', 'rondes')}. Alleen de eerste ${rounds} ${rounds === 1 ? 'wordt' : 'worden'} gebruikt.`;
-  if (count && count !== rounds && count <= 99) hint += ` <button class="link link--inline" data-action="match-rounds">Zet het aantal rondes op ${count}</button>`;
+  if (count && d.order !== 'exercise' && count !== rounds && count <= 99) hint += ` <button class="link link--inline" data-action="match-rounds">Zet het aantal rondes op ${count}</button>`;
   app.querySelector('#exerciseHint').innerHTML = hint;
 }
 
@@ -689,9 +764,9 @@ function startRun(workout) {
     </div>
 
     <div class="run-meta">
-      <div><strong data-ref="round"></strong><span>Ronde</span></div>
+      <div><strong data-ref="round"></strong><span>${workout.order === 'exercise' ? 'Oefening' : 'Ronde'}</span></div>
       <div><strong data-ref="set"></strong><span>Set</span></div>
-      <div><strong data-ref="left"></strong><span>Resterend</span></div>
+      <div><strong data-ref="left"></strong><span>${phases.some((p) => p.untimed) ? 'Verstreken' : 'Resterend'}</span></div>
     </div>
     <div class="run-progress"><i data-ref="bar"></i></div>
 
@@ -728,7 +803,8 @@ function startRun(workout) {
 
       // Tijdens het werk tonen we de naam van de oefening; anders de naam van de fase.
       const exercise = phase.type === 'work' ? phase.exercise : null;
-      setText('phase', exercise ? exercise.name : PHASE_LABELS[phase.type]);
+      setText('phase', exercise ? exercise.name : phaseLabel(phase.type, workout));
+      el.classList.toggle('is-untimed', !!phase.untimed);
       ref.phase.classList.toggle('is-long', !!exercise && exercise.name.length > 14);
       ref.kicker.hidden = !exercise;
 
@@ -756,12 +832,17 @@ function startRun(workout) {
       // De regel "Hierna: ..." is niet nodig als de kaart al zegt wat er komt.
       const upcoming = phases[index + 1];
       ref.next.hidden = !!comingUp;
-      setText('next', upcoming ? `Hierna: ${PHASE_LABELS[upcoming.type].toLowerCase()} · ${formatTime(upcoming.duration)}` : 'Laatste fase. Bijna klaar!');
+      let nextText = 'Laatste fase. Bijna klaar!';
+      if (phase.untimed) nextText = 'Tik op het vinkje als je klaar bent';
+      else if (upcoming && upcoming.untimed) nextText = `Hierna: ${upcoming.reps}× ${upcoming.exercise ? upcoming.exercise.name.toLowerCase() : 'werk'}`;
+      else if (upcoming) nextText = `Hierna: ${phaseLabel(upcoming.type, workout).toLowerCase()} · ${formatTime(upcoming.duration)}`;
+      setText('next', nextText);
       fitRing();
 
-      if (phase.type === 'work') sound.work(exercise ? exercise.name : 'Werk');
+      const workName = exercise ? exercise.name : 'Werk';
+      if (phase.type === 'work') sound.work(phase.untimed ? `${workName}, ${phase.reps} keer` : workName);
       else if (phase.type === 'prepare') sound.prepare();
-      else sound.rest(PHASE_LABELS[phase.type]);
+      else sound.rest(phaseLabel(phase.type, workout));
     },
     onCountdown() {
       sound.countdown();
@@ -770,18 +851,29 @@ function startRun(workout) {
       if (phase.type === 'work' && store.settings().halfway) sound.halfway();
     },
     onTick(r) {
+      const untimed = !!r.phase.untimed;
       const seconds = Math.ceil(r.remainingMs / 1000);
-      setText('time', formatTime(seconds));
-      setText('left', formatTime(Math.ceil(r.totalRemainingMs / 1000)));
-      setText('note', r.running ? '' : 'Gepauzeerd');
-      ref.ring.style.strokeDashoffset = RING_LENGTH * (1 - r.remainingMs / (r.phase.duration * 1000));
-      ref.bar.style.transform = `scaleX(${1 - r.totalRemainingMs / r.totalMs})`;
+      if (untimed) {
+        // Werk op aantal: het aantal staat groot in beeld, eronder loopt een klokje mee.
+        setText('time', `${r.phase.reps}×`);
+        setText('note', r.running ? formatTime(Math.floor(r.phaseMs / 1000)) : 'Gepauzeerd');
+        ref.ring.style.strokeDashoffset = 0;
+      } else {
+        setText('time', formatTime(seconds));
+        setText('note', r.running ? '' : 'Gepauzeerd');
+        ref.ring.style.strokeDashoffset = RING_LENGTH * (1 - r.remainingMs / (r.phase.duration * 1000));
+      }
+      // Zonder vaste totale tijd tonen we hoe lang je al bezig bent.
+      setText('left', r.hasUntimed ? formatTime(Math.floor(r.elapsedMs / 1000)) : formatTime(Math.ceil(r.totalRemainingMs / 1000)));
+      ref.bar.style.transform = `scaleX(${r.progress})`;
       el.classList.toggle('is-paused', !r.running);
-      el.classList.toggle('is-ending', r.running && seconds <= 3);
-      if (shown.playing !== r.running) {
-        shown.playing = r.running;
-        ref.toggle.innerHTML = r.running ? icon.pause : icon.play;
-        ref.toggle.setAttribute('aria-label', r.running ? 'Pauzeren' : 'Hervatten');
+      el.classList.toggle('is-ending', !untimed && r.running && seconds <= 3);
+      // De grote knop: pauze of afspelen, en bij werk op aantal een vinkje ("Klaar").
+      const button = untimed ? 'done' : r.running ? 'pause' : 'play';
+      if (shown.button !== button) {
+        shown.button = button;
+        ref.toggle.innerHTML = { done: icon.check, pause: icon.pause, play: icon.play }[button];
+        ref.toggle.setAttribute('aria-label', { done: 'Klaar met deze oefening', pause: 'Pauzeren', play: 'Hervatten' }[button]);
       }
     },
     onFinish() {
@@ -933,7 +1025,7 @@ async function shareSheet() {
   const user = store.activeUser();
   const workout = { ...ui.draft, name: ui.draft.name.trim() || 'Mijn training' };
   const url = shareUrl(await encodeWorkout(workout, user.name));
-  const summary = `${workoutSummary(workout)}, ${formatTime(totalSeconds(workout))} min`;
+  const summary = workout.workMode === 'reps' ? workoutSummary(workout) : `${workoutSummary(workout)}, ${formatTime(totalSeconds(workout))} min`;
   const message = shareMessage({ name: workout.name, summary, from: user.name, url });
   const hasPhotos = (workout.exercises || []).some((e) => e.imageId);
 
@@ -979,7 +1071,7 @@ function sharedSheet(shared, fromLink = false) {
     <h2 class="sheet-title">${esc(w.name)}</h2>
     <p class="lead lead--sm">${workoutSummary(w)}</p>
     <div class="shared-facts">
-      <span class="pill">${formatTime(totalSeconds(w))} min</span>
+      <span class="pill">${durationText(w)}</span>
       ${w.group ? `<span class="pill pill--muted">${esc(w.group)}</span>` : ''}
       ${names.length ? `<span class="pill pill--muted">${plural(names.length, 'oefening', 'oefeningen')}</span>` : ''}
     </div>
@@ -1126,6 +1218,14 @@ function exerciseSheet(exercise = null) {
         <span>Afbeelding <em>(optioneel)</em></span>
         <div id="exerciseImage"></div>
       </div>
+      ${
+        ui.draft.workMode === 'reps'
+          ? `<label class="textfield">
+              <span>Aantal herhalingen <em>(optioneel)</em></span>
+              <input name="reps" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="Standaard: ${ui.draft.reps}" value="${exercise && exercise.reps ? exercise.reps : ''}" autocomplete="off" />
+            </label>`
+          : ''
+      }
       <label class="textfield">
         <span>Filmpje <em>(optioneel)</em></span>
         <input name="video" type="text" inputmode="url" maxlength="300" placeholder="Plak hier een link, bv. van YouTube" value="${exercise ? esc(exercise.video || '') : ''}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
@@ -1432,6 +1532,10 @@ const actions = {
     closeSheet();
     refreshEditor();
   },
+  'set-choice'(el) {
+    ui.draft[el.dataset.key] = el.dataset.value;
+    refreshEditor();
+  },
   'match-rounds'() {
     ui.draft.rounds = Math.min(99, ui.draft.exercises.length);
     refreshEditor();
@@ -1561,7 +1665,10 @@ const actions = {
   },
 
   // ---- Timer ----
+  // De grote knop (en een tik op de cirkel): pauzeren of hervatten.
+  // Bij werk op aantal betekent dezelfde knop "Klaar": door naar de rust.
   'run-toggle'() {
+    if (run.runner.phase.untimed) return run.runner.next();
     run.runner.toggle();
     run.runner.tick();
   },
@@ -1678,8 +1785,12 @@ document.addEventListener('submit', (event) => {
     images.set(imageId, exerciseEdit.newImage);
   }
 
-  const fields = { name, note: String(values.get('note')).trim().slice(0, 400), imageId, libraryId: exerciseEdit.libraryId, video };
   const existing = ui.draft.exercises.find((e) => e.id === exerciseEdit.id);
+  // Het eigen aantal herhalingen: leeg = het standaardaantal van de training.
+  // Staat het veld er niet (training op tijd), dan blijft een eerder ingevuld aantal bewaard.
+  const typedReps = parseInt(values.get('reps'), 10);
+  const reps = values.has('reps') ? (typedReps > 0 ? Math.min(200, typedReps) : null) : (existing?.reps ?? null);
+  const fields = { name, note: String(values.get('note')).trim().slice(0, 400), imageId, libraryId: exerciseEdit.libraryId, video, reps };
   if (existing) Object.assign(existing, fields);
   else ui.draft.exercises.push({ id: newId(), ...fields });
   closeSheet();

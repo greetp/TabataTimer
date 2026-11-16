@@ -85,6 +85,9 @@ function uniqueById(items) {
   return items.filter((item) => !seen.has(item.id) && seen.add(item.id));
 }
 
+// Het eigen aantal herhalingen van een oefening: een getal van 1 tot 200, of null als er geen is.
+const cleanReps = (value) => (Number(value) > 0 ? cleanNumber(value, 1, 200, null) : null);
+
 // Maakt van eender wat een lijst van objecten (of een lege lijst).
 const list = (value) => (Array.isArray(value) ? value.filter((item) => item && typeof item === 'object') : []);
 
@@ -102,6 +105,9 @@ export function sanitizeWorkout(raw) {
     sets: cleanNumber(raw.sets, 1, 20, 1),
     setRest: cleanNumber(raw.setRest, 0, 3600, 60),
     cooldown: cleanNumber(raw.cooldown, 0, 3600, 0),
+    workMode: raw.workMode === 'reps' ? 'reps' : 'time',
+    reps: cleanNumber(raw.reps, 1, 200, 12),
+    order: raw.order === 'exercise' ? 'exercise' : 'circuit',
     exercises: list(raw.exercises)
       .filter((e) => cleanText(e.name, 40))
       .slice(0, 60)
@@ -110,6 +116,7 @@ export function sanitizeWorkout(raw) {
         note: cleanText(e.note, 400),
         libraryId: libraryItem(e.libraryId) ? e.libraryId : null,
         video: cleanUrl(e.video),
+        reps: cleanReps(e.reps),
       })),
   };
 }
@@ -127,6 +134,7 @@ const cleanExercises = (value) =>
         libraryId: libraryItem(e.libraryId) ? e.libraryId : null,
         imageId: isId(e.imageId) ? e.imageId : null,
         video: cleanUrl(e.video),
+        reps: cleanReps(e.reps),
       }))
   );
 
@@ -166,6 +174,9 @@ export function readBackup(raw) {
         sets: cleanNumber(w.sets, 1, 20, 1),
         setRest: cleanNumber(w.setRest, 0, 3600, 60),
         cooldown: cleanNumber(w.cooldown, 0, 3600, 0),
+        workMode: w.workMode === 'reps' ? 'reps' : 'time',
+        reps: cleanNumber(w.reps, 1, 200, 12),
+        order: w.order === 'exercise' ? 'exercise' : 'circuit',
         exercises: cleanExercises(w.exercises),
         createdAt: cleanNumber(w.createdAt, 0, 9e15, Date.now()),
       }))

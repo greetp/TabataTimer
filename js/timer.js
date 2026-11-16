@@ -4,6 +4,14 @@
 //     (voorbereiding, werk, rust, ...).
 //  2. Runner: loopt door die fases en houdt de tijd bij.
 // Hier zit geen HTML in; het scherm wordt in app.js getekend.
+//
+// Twee keuzes per training bepalen de fases:
+//   workMode  'time' = elke werkfase duurt een vast aantal seconden
+//             'reps' = elke werkfase is een aantal herhalingen; ze loopt
+//                      tot de gebruiker op "Klaar" tikt (geen aftelling)
+//   order     'circuit'  = één set is alle oefeningen na elkaar,
+//                          daarna herhaal je het geheel
+//             'exercise' = eerst alle sets van één oefening, dan de volgende
 // ---------------------------------------------------------------
 
 export const PHASE_LABELS = {
@@ -13,6 +21,12 @@ export const PHASE_LABELS = {
   setrest: 'Rust tussen sets',
   cooldown: 'Cooling-down',
 };
+
+// De naam van een fase. Bij "per oefening" is de lange rust een rust tussen oefeningen.
+export function phaseLabel(type, workout) {
+  if (type === 'setrest' && workout?.order === 'exercise') return 'Rust tussen oefeningen';
+  return PHASE_LABELS[type];
+}
 
 // Maakt de volgorde van fases voor één training.
 export function buildPhases(w) {
@@ -26,19 +40,39 @@ export function buildPhases(w) {
   const exercises = w.exercises || [];
   const exerciseFor = (round) => (exercises.length ? exercises[(round - 1) % exercises.length] : null);
 
+  // Eén werkfase: op tijd, of een aantal herhalingen zonder aftelling ("untimed").
+  const byReps = w.workMode === 'reps';
+  const addWork = (round, set) => {
+    const exercise = exerciseFor(round);
+    if (byReps) {
+      const reps = (exercise && exercise.reps) || w.reps || 12;
+      phases.push({ type: 'work', duration: 0, untimed: true, reps, round, set, exercise });
+    } else {
+      add('work', w.work, round, set, exercise);
+    }
+  };
+
   add('prepare', w.prepare, 1, 1);
 
-  for (let set = 1; set <= w.sets; set++) {
-    for (let round = 1; round <= w.rounds; round++) {
-      add('work', w.work, round, set, exerciseFor(round));
+  // Twee lussen in elkaar. Bij een circuit loopt de buitenste lus over de sets en de
+  // binnenste over de rondes (oefeningen). Bij "per oefening" is het net omgekeerd.
+  const perExercise = w.order === 'exercise';
+  const outerCount = perExercise ? w.rounds : w.sets;
+  const innerCount = perExercise ? w.sets : w.rounds;
 
-      const lastRound = round === w.rounds;
-      const lastSet = set === w.sets;
+  for (let outer = 1; outer <= outerCount; outer++) {
+    for (let inner = 1; inner <= innerCount; inner++) {
+      const round = perExercise ? outer : inner;
+      const set = perExercise ? inner : outer;
+      addWork(round, set);
 
-      if (!lastRound) {
+      const lastInner = inner === innerCount;
+      const lastOuter = outer === outerCount;
+
+      if (!lastInner) {
         add('rest', w.rest, round, set);
-      } else if (!lastSet) {
-        // Na de laatste ronde van een set: de langere rust tussen sets
+      } else if (!lastOuter) {
+        // Na de laatste van de binnenste lus: de langere rust
         // (of de gewone rust als die op 0 staat).
         if (w.setRest > 0) add('setrest', w.setRest, round, set);
         else add('rest', w.rest, round, set);
@@ -50,6 +84,7 @@ export function buildPhases(w) {
   return phases;
 }
 
+// De tijd die vastligt: rust, voorbereiding en werk op tijd. Werk op aantal telt niet mee.
 export const totalSeconds = (w) => buildPhases(w).reduce((sum, p) => sum + p.duration, 0);
 
 // 95 -> "1:35"
@@ -68,7 +103,9 @@ export class Runner {
     this.index = 0;
     this.running = false;
     this.stopped = false;
-    this.elapsedMs = 0;
+    this.elapsedMs = 0; // hoe lang de training al loopt (zonder pauzes)
+    this.phaseMs = 0; // hoe lang de huidige fase al loopt
+    this.hasUntimed = phases.some((p) => p.untimed); // zit er werk op aantal in?
 
     // after[i] = aantal seconden dat nog komt ná fase i
     this.after = new Array(phases.length).fill(0);
@@ -80,9 +117,17 @@ export class Runner {
     return this.phases[this.index];
   }
 
-  // Resterende tijd van de hele training, in milliseconden.
+  // Resterende vaste tijd van de hele training, in milliseconden.
   get totalRemainingMs() {
     return this.remainingMs + this.after[this.index] * 1000;
+  }
+
+  // Hoe ver de training gevorderd is, van 0 tot 1.
+  get progress() {
+    if (!this.hasUntimed) return 1 - this.totalRemainingMs / this.totalMs;
+    // Met werk op aantal kennen we de totale tijd niet: dan tellen we de fases.
+    const inPhase = this.phase.untimed ? 0 : 1 - this.remainingMs / (this.phase.duration * 1000);
+    return (this.index + inPhase) / this.phases.length;
   }
 
   start() {
@@ -94,8 +139,10 @@ export class Runner {
 
   _enter(index) {
     this.index = index;
+    this.phaseMs = 0;
+    // Een fase zonder aftelling eindigt nooit vanzelf: ze wacht op next().
     this.remainingMs = this.phases[index].duration * 1000;
-    this.endAt = Date.now() + this.remainingMs;
+    this.endAt = this.phases[index].untimed ? Infinity : Date.now() + this.remainingMs;
     this.lastSecond = null;
     this.halfDone = false;
     this.cb.onPhase?.(this.phase, index);
@@ -113,6 +160,7 @@ export class Runner {
 
     if (this.running) {
       this.elapsedMs += now - this.lastTick;
+      this.phaseMs += now - this.lastTick;
       this.lastTick = now;
 
       // Is de fase voorbij? Ga dan naar de volgende. De "while" vangt
@@ -120,31 +168,41 @@ export class Runner {
       let changed = false;
       while (now >= this.endAt) {
         if (this.index >= this.phases.length - 1) return this._finish();
+        const ended = this.endAt;
         this.index++;
-        this.endAt += this.phases[this.index].duration * 1000;
         changed = true;
+        if (this.phase.untimed) {
+          // Werk op aantal: hier blijven we staan tot de gebruiker op "Klaar" tikt.
+          this.endAt = Infinity;
+          this.phaseMs = now - ended;
+        } else {
+          this.endAt = ended + this.phase.duration * 1000;
+        }
       }
-      this.remainingMs = this.endAt - now;
+      this.remainingMs = this.phase.untimed ? 0 : this.endAt - now;
       if (changed) {
+        if (!this.phase.untimed) this.phaseMs = this.phase.duration * 1000 - this.remainingMs;
         this.lastSecond = null;
         this.halfDone = false;
         this.cb.onPhase?.(this.phase, this.index);
       }
 
-      // Signaal halverwege de fase (alleen bij fases van minstens 10 seconden).
-      const halfMs = this.phase.duration * 500;
-      if (!this.halfDone && this.remainingMs <= halfMs) {
-        this.halfDone = true;
-        // Zijn we de helft al een eind voorbij (de app stond op de achtergrond)? Dan geen signaal meer.
-        if (this.phase.duration >= 10 && this.remainingMs > halfMs - 1500) this.cb.onHalfway?.(this.phase);
-      }
+      if (!this.phase.untimed) {
+        // Signaal halverwege de fase (alleen bij fases van minstens 10 seconden).
+        const halfMs = this.phase.duration * 500;
+        if (!this.halfDone && this.remainingMs <= halfMs) {
+          this.halfDone = true;
+          // Zijn we de helft al een eind voorbij (de app stond op de achtergrond)? Dan geen signaal meer.
+          if (this.phase.duration >= 10 && this.remainingMs > halfMs - 1500) this.cb.onHalfway?.(this.phase);
+        }
 
-      // Signaal op 3, 2 en 1 seconde voor het einde van een fase.
-      const second = Math.ceil(this.remainingMs / 1000);
-      if (second !== this.lastSecond) {
-        const first = this.lastSecond === null;
-        this.lastSecond = second;
-        if (!first && second <= 3 && second > 0) this.cb.onCountdown?.(second);
+        // Signaal op 3, 2 en 1 seconde voor het einde van een fase.
+        const second = Math.ceil(this.remainingMs / 1000);
+        if (second !== this.lastSecond) {
+          const first = this.lastSecond === null;
+          this.lastSecond = second;
+          if (!first && second <= 3 && second > 0) this.cb.onCountdown?.(second);
+        }
       }
     }
 
@@ -161,24 +219,24 @@ export class Runner {
     if (this.running || this.stopped) return;
     this.running = true;
     this.lastTick = Date.now();
-    this.endAt = Date.now() + this.remainingMs;
+    if (!this.phase.untimed) this.endAt = Date.now() + this.remainingMs;
   }
 
   toggle() {
     this.running ? this.pause() : this.resume();
   }
 
-  // Naar de volgende fase springen.
+  // Naar de volgende fase springen. Bij werk op aantal is dit de knop "Klaar".
   next() {
     if (this.index >= this.phases.length - 1) return this._finish();
+    if (!this.running) this.resume(); // "Klaar" tikken tijdens een pauze laat de rust meteen lopen
     this._enter(this.index + 1);
     this.cb.onTick?.(this);
   }
 
   // Terug: eerst naar het begin van deze fase, bij nog eens tikken naar de vorige.
   previous() {
-    const playedMs = this.phase.duration * 1000 - this.remainingMs;
-    this._enter(playedMs > 2000 || this.index === 0 ? this.index : this.index - 1);
+    this._enter(this.phaseMs > 2000 || this.index === 0 ? this.index : this.index - 1);
     this.cb.onTick?.(this);
   }
 
@@ -190,7 +248,8 @@ export class Runner {
 
   _finish() {
     this.stop();
-    this.elapsedMs = Math.min(this.elapsedMs, this.totalMs);
+    // Op tijd kan een training nooit langer duren dan gepland (bv. na een tijd op de achtergrond).
+    if (!this.hasUntimed) this.elapsedMs = Math.min(this.elapsedMs, this.totalMs);
     this.cb.onFinish?.(this);
   }
 }

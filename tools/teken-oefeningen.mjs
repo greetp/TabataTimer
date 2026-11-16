@@ -176,9 +176,13 @@ const DRAWINGS = {
   burpee: figure({ at: ['ankle', [30, 103]], torso: -35, head: -20, leg: [-22, 115], arm: [80, 85] }, true) + figure(jump(84, 98)),
 
   // Op de zij liggen; het bovenste been gaat gestrekt omhoog.
-  sidelegraise:
-    figure({ at: ['hip', [60, 100]], torso: 180, head: 196, leg: [-5, -5, -95], farLeg: [0, 0, -90], arm: [8, 4], farArm: [180, 180] }, true) +
-    figure({ at: ['hip', [60, 100]], torso: 180, head: 196, leg: [-30, -30, -120], farLeg: [0, 0, -90], arm: [8, 4], farArm: [180, 180] }),
+  // Drie dingen tonen dat het figuurtje op de zij ligt en niet op de rug:
+  // het hoofd rust op de hand, de bovenste hand ligt op de heup (elleboog steekt uit),
+  // en de voeten wijzen in het verlengde van het been in plaats van omhoog.
+  sidelegraise: (() => {
+    const side = (topLeg) => ({ at: ['hip', [62, 100]], torso: 186, head: 235, leg: [topLeg, topLeg, topLeg], farLeg: [0, 0, 0], arm: [-40, 38], farArm: [170, -72] });
+    return figure(side(-7), true) + figure(side(-36));
+  })(),
 
   // Bruggetje met één been gestrekt omhoog; heupen omhoog en traag laten zakken.
   singlebridge:

@@ -173,6 +173,9 @@ blok met haar eigen tekst. Na een wijziging aan de app zelf voer je stap 2 opnie
 
 ## Hoe zit de code in elkaar?
 
+Werk je met Claude aan deze app? De afspraken en de stand van zaken staan in `CLAUDE.md`.
+
+
 | Bestand | Wat doet het? |
 |---|---|
 | `index.html` | De lege pagina waarin de app geladen wordt. |

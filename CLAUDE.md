@@ -103,7 +103,15 @@ Zeg altijd eerlijk wat alleen in de testbrowser is nagekeken en wat op een echt 
 
 ## Bekende grenzen (bewuste keuzes)
 
-- Een training is volledig op tijd of volledig op aantal herhalingen; mengen kan niet.
+- Op tijd of op aantal kies je voor de training, en een oefening kan ervan afwijken (veld `mode` van de
+  oefening; leeg = volgt de training). Een oefening op tijd kan ook een eigen tijd hebben (veld `work`;
+  leeg = de werktijd van de training), net zoals een oefening op aantal een eigen aantal heeft (`reps`).
+- Een oefening met "links en rechts" (veld `sides`) geeft twee werkfases. De tijd of het aantal geldt per kant.
+  Ertussen komt de wisselpauze (`switchRest` van de training, standaard 5 s; 0 = meteen door), ook bij een
+  oefening op aantal: na het vinkje telt eerst "Wissel van kant" af.
+- In de bibliotheek start alleen de zijplank met "links en rechts" aan (`sides: true` in `js/library.js`).
+  In een gedeelde link betekent alleen de code van een oefening altijd "zonder links en rechts", zodat
+  links van vóór 1.12 hetzelfde blijven doen.
 - Eigen foto's gaan niet mee bij het delen van een training: ze zijn te groot voor een link.
 - Een link in een bericht opent in de browser, niet in de app op het beginscherm, en die twee bewaren
   hun gegevens apart. Daarom kopieert de ontvanger het bericht en plakt hij het via "Training ontvangen".

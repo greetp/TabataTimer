@@ -47,7 +47,8 @@ export const newId = () => Date.now().toString(36) + Math.random().toString(36).
 // Maakt een oefening op basis van een oefening uit de bibliotheek.
 export function exerciseFromLibrary(libraryId) {
   const item = libraryItem(libraryId);
-  return { id: newId(), name: item.name, note: item.note, libraryId, imageId: null, video: '' };
+  // Sommige oefeningen doe je aan elke kant (bv. de zijplank): die starten met "links en rechts" aan.
+  return { id: newId(), name: item.name, note: item.note, libraryId, imageId: null, video: '', sides: item.sides === true };
 }
 
 // Kijkt een link naar een filmpje na. Geeft '' terug als het geen geldige weblink is.
@@ -88,6 +89,12 @@ function uniqueById(items) {
 // Het eigen aantal herhalingen van een oefening: een getal van 1 tot 200, of null als er geen is.
 const cleanReps = (value) => (Number(value) > 0 ? cleanNumber(value, 1, 200, null) : null);
 
+// De eigen werktijd van een oefening: 1 tot 3600 seconden, of null als ze de tijd van de training volgt.
+const cleanWork = (value) => (Number(value) > 0 ? cleanNumber(value, 1, 3600, null) : null);
+
+// De eigen keuze van een oefening: 'time' of 'reps', of null als ze de training volgt.
+const cleanMode = (value) => (value === 'time' || value === 'reps' ? value : null);
+
 // Maakt van eender wat een lijst van objecten (of een lege lijst).
 const list = (value) => (Array.isArray(value) ? value.filter((item) => item && typeof item === 'object') : []);
 
@@ -105,6 +112,7 @@ export function sanitizeWorkout(raw) {
     sets: cleanNumber(raw.sets, 1, 20, 1),
     setRest: cleanNumber(raw.setRest, 0, 3600, 60),
     cooldown: cleanNumber(raw.cooldown, 0, 3600, 0),
+    switchRest: cleanNumber(raw.switchRest, 0, 600, 5),
     workMode: raw.workMode === 'reps' ? 'reps' : 'time',
     reps: cleanNumber(raw.reps, 1, 200, 12),
     order: raw.order === 'exercise' ? 'exercise' : 'circuit',
@@ -117,6 +125,9 @@ export function sanitizeWorkout(raw) {
         libraryId: libraryItem(e.libraryId) ? e.libraryId : null,
         video: cleanUrl(e.video),
         reps: cleanReps(e.reps),
+        mode: cleanMode(e.mode),
+        work: cleanWork(e.work),
+        sides: e.sides === true,
       })),
   };
 }
@@ -135,6 +146,9 @@ const cleanExercises = (value) =>
         imageId: isId(e.imageId) ? e.imageId : null,
         video: cleanUrl(e.video),
         reps: cleanReps(e.reps),
+        mode: cleanMode(e.mode),
+        work: cleanWork(e.work),
+        sides: e.sides === true,
       }))
   );
 
@@ -174,6 +188,7 @@ export function readBackup(raw) {
         sets: cleanNumber(w.sets, 1, 20, 1),
         setRest: cleanNumber(w.setRest, 0, 3600, 60),
         cooldown: cleanNumber(w.cooldown, 0, 3600, 0),
+        switchRest: cleanNumber(w.switchRest, 0, 600, 5),
         workMode: w.workMode === 'reps' ? 'reps' : 'time',
         reps: cleanNumber(w.reps, 1, 200, 12),
         order: w.order === 'exercise' ? 'exercise' : 'circuit',

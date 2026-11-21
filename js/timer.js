@@ -9,6 +9,8 @@
 //   workMode  'time' = elke werkfase duurt een vast aantal seconden
 //             'reps' = elke werkfase is een aantal herhalingen; ze loopt
 //                      tot de gebruiker op "Klaar" tikt (geen aftelling)
+//             Dit is de standaard voor de hele training. Een oefening kan
+//             er met haar eigen veld "mode" van afwijken (zie exerciseMode).
 //   order     'circuit'  = één set is alle oefeningen na elkaar,
 //                          daarna herhaal je het geheel
 //             'exercise' = eerst alle sets van één oefening, dan de volgende
@@ -28,11 +30,43 @@ export function phaseLabel(type, workout) {
   return PHASE_LABELS[type];
 }
 
+// Sommige fases hebben een eigen naam, zoals de pauze om van kant te wisselen.
+export const labelFor = (phase, workout) => phase.label || phaseLabel(phase.type, workout);
+
+// De pauze tussen links en rechts als de training er zelf geen heeft (oudere trainingen).
+export const SWITCH_DEFAULT = 5;
+
+// Doe je deze oefening op tijd ('time') of op aantal ('reps')?
+// Een oefening zonder eigen keuze volgt de training. Dat geldt ook voor oefeningen
+// van vóór deze keuze bestond, en voor een ronde zonder oefening.
+export function exerciseMode(exercise, w) {
+  const own = exercise ? exercise.mode : null;
+  if (own === 'time' || own === 'reps') return own;
+  return w.workMode === 'reps' ? 'reps' : 'time';
+}
+
+// De oefeningen die echt aan bod komen: bij meer oefeningen dan rondes alleen de eerste.
+export const usedExercises = (w) => (w.exercises || []).slice(0, w.rounds);
+
+// Is er een oefening met links en rechts? Alleen dan is er een wisselpauze.
+export const hasSwitchRest = (w) => usedExercises(w).some((e) => e.sides);
+
+// Hoe lang duurt het werk van deze oefening als ze op tijd gaat?
+// Een eigen tijd van de oefening gaat voor op de werktijd van de training.
+export const exerciseWork = (exercise, w) => (exercise && exercise.work > 0 ? exercise.work : w.work);
+
+// Wat komt er in deze training voor: werk op tijd, werk op aantal, of allebei?
+export function workModes(w) {
+  const used = usedExercises(w);
+  const modes = used.length ? used.map((e) => exerciseMode(e, w)) : [exerciseMode(null, w)];
+  return { time: modes.includes('time'), reps: modes.includes('reps') };
+}
+
 // Maakt de volgorde van fases voor één training.
 export function buildPhases(w) {
   const phases = [];
-  const add = (type, duration, round, set, exercise = null) => {
-    if (duration > 0) phases.push({ type, duration, round, set, exercise });
+  const add = (type, duration, round, set) => {
+    if (duration > 0) phases.push({ type, duration, round, set, exercise: null });
   };
 
   // Welke oefening hoort bij welke ronde? Ronde 1 = oefening 1, enzovoort.
@@ -41,15 +75,25 @@ export function buildPhases(w) {
   const exerciseFor = (round) => (exercises.length ? exercises[(round - 1) % exercises.length] : null);
 
   // Eén werkfase: op tijd, of een aantal herhalingen zonder aftelling ("untimed").
-  const byReps = w.workMode === 'reps';
+  // Dat kan per oefening verschillen.
+  // Een oefening met "links en rechts" doe je twee keer na elkaar: eerst links, dan rechts.
+  // De tijd of het aantal geldt per kant.
+  const switchRest = w.switchRest ?? SWITCH_DEFAULT;
   const addWork = (round, set) => {
     const exercise = exerciseFor(round);
-    if (byReps) {
-      const reps = (exercise && exercise.reps) || w.reps || 12;
-      phases.push({ type: 'work', duration: 0, untimed: true, reps, round, set, exercise });
-    } else {
-      add('work', w.work, round, set, exercise);
-    }
+    const byReps = exerciseMode(exercise, w) === 'reps';
+    const sides = exercise && exercise.sides ? ['links', 'rechts'] : [null];
+    sides.forEach((side, i) => {
+      // Tussen de twee kanten krijg je even de tijd om te wisselen. Dat is een gewone rustfase met een eigen naam.
+      if (i > 0 && switchRest > 0) phases.push({ type: 'rest', label: 'Wissel van kant', duration: switchRest, round, set, exercise: null, side: null });
+      if (byReps) {
+        const reps = (exercise && exercise.reps) || w.reps || 12;
+        phases.push({ type: 'work', duration: 0, untimed: true, reps, round, set, exercise, side });
+      } else {
+        const duration = exerciseWork(exercise, w);
+        if (duration > 0) phases.push({ type: 'work', duration, round, set, exercise, side });
+      }
+    });
   };
 
   add('prepare', w.prepare, 1, 1);

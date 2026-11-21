@@ -14,6 +14,7 @@
 
 import { sanitizeWorkout } from './store.js';
 import { libraryItem } from './library.js';
+import { workModes, hasSwitchRest, SWITCH_DEFAULT } from './timer.js';
 
 // De intervallen, in de volgorde waarin ze in de link staan.
 const TIMES = ['prepare', 'work', 'rest', 'rounds', 'sets', 'setRest', 'cooldown'];
@@ -24,34 +25,44 @@ function pack(workout, from) {
   const exercises = (workout.exercises || []).map((e) => {
     const item = libraryItem(e.libraryId);
     // Een ongewijzigde oefening uit de bibliotheek: alleen haar code is genoeg.
-    if (item && e.name === item.name && (e.note || '') === item.note && !e.video && !e.reps) return e.libraryId;
+    // (Een oefening met links en rechts schrijven we altijd voluit: in oudere links
+    // betekent alleen de code "zonder links en rechts", en dat moet zo blijven.)
+    if (item && e.name === item.name && (e.note || '') === item.note && !e.video && !e.reps && !e.mode && !e.work && !e.sides) return e.libraryId;
     const short = { n: e.name };
     if (e.note) short.o = e.note;
     if (e.libraryId) short.l = e.libraryId;
     if (e.video) short.v = e.video;
     if (e.reps) short.r = e.reps;
+    // Alleen als de oefening afwijkt van de training: "t" = op tijd, "r" = op aantal.
+    if (e.mode === 'time' || e.mode === 'reps') short.m = e.mode === 'time' ? 't' : 'r';
+    if (e.work) short.t = e.work; // eigen werktijd
+    if (e.sides) short.s = 1; // links en rechts
     return short;
   });
   const packed = { v: 1, n: workout.name, g: workout.group || '', t: TIMES.map((key) => workout[key]), e: exercises, by: from };
   // Alleen meesturen als het afwijkt van het gewone geval (op tijd, als circuit): zo blijft de link kort.
-  if (workout.workMode === 'reps') {
-    packed.m = 1;
-    packed.r = workout.reps || 12;
-  }
+  if (workout.workMode === 'reps') packed.m = 1;
+  // Het aantal herhalingen is ook nodig als maar één oefening op aantal gaat.
+  if (workModes(workout).reps) packed.r = workout.reps || 12;
   if (workout.order === 'exercise') packed.d = 1;
+  // De wisselpauze tussen links en rechts, als ze gebruikt wordt en niet de gewone 5 seconden is.
+  const switchRest = workout.switchRest ?? SWITCH_DEFAULT;
+  if (hasSwitchRest(workout) && switchRest !== SWITCH_DEFAULT) packed.w = switchRest;
   return packed;
 }
 
 function unpack(data) {
   if (!data || data.v !== 1 || !Array.isArray(data.t)) return null;
-  const raw = { name: data.n, group: data.g, workMode: data.m ? 'reps' : 'time', reps: data.r, order: data.d ? 'exercise' : 'circuit' };
+  const raw = { name: data.n, group: data.g, workMode: data.m ? 'reps' : 'time', reps: data.r, order: data.d ? 'exercise' : 'circuit', switchRest: data.w };
   TIMES.forEach((key, i) => (raw[key] = data.t[i]));
   raw.exercises = (Array.isArray(data.e) ? data.e : []).map((e) => {
     if (typeof e === 'string') {
       const item = libraryItem(e);
       return item ? { name: item.name, note: item.note, libraryId: e } : null;
     }
-    return e && typeof e === 'object' ? { name: e.n, note: e.o, libraryId: e.l, video: e.v, reps: e.r } : null;
+    if (!e || typeof e !== 'object') return null;
+    const mode = e.m === 't' ? 'time' : e.m === 'r' ? 'reps' : null;
+    return { name: e.n, note: e.o, libraryId: e.l, video: e.v, reps: e.r, mode, work: e.t, sides: e.s === 1 };
   });
   // sanitizeWorkout kijkt elke waarde na: een link kan door iedereen gemaakt zijn.
   const workout = sanitizeWorkout(raw);

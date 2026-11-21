@@ -13,7 +13,7 @@
 import { store, AVATAR_COLORS, readBackup, newId, cleanUrl, exerciseFromLibrary } from './store.js';
 import { images, shrinkImage } from './images.js';
 import { LIBRARY, LIBRARY_GROUPS, libraryImage } from './library.js';
-import { buildPhases, totalSeconds, formatTime, Runner, phaseLabel } from './timer.js';
+import { buildPhases, totalSeconds, formatTime, Runner, labelFor, exerciseMode, workModes, usedExercises, hasSwitchRest, SWITCH_DEFAULT } from './timer.js';
 import { sound } from './sound.js';
 import { encodeWorkout, decodeWorkout, shareUrl, shareMessage } from './share.js';
 
@@ -144,16 +144,22 @@ function stats(sessions) {
 
 function workoutSummary(w) {
   const perExercise = w.order === 'exercise';
-  const byReps = w.workMode === 'reps';
+  const modes = workModes(w);
   const parts = [perExercise ? plural(w.rounds, 'oefening', 'oefeningen') : plural(w.rounds, 'ronde', 'rondes')];
-  parts.push(byReps ? `${w.reps || 12}× per ${perExercise ? 'set' : 'oefening'}` : `${shortTime(w.work)} werk`);
+  // Het werk: op tijd, op aantal, of een mix van de twee (dat kan per oefening verschillen).
+  if (modes.time && modes.reps) parts.push('op tijd en op aantal');
+  else parts.push(modes.reps ? `${w.reps || 12}× per ${perExercise ? 'set' : 'oefening'}` : `${shortTime(w.work)} werk`);
   parts.push(`${shortTime(w.rest)} rust`);
   if (w.sets > 1) parts.push(perExercise ? `${w.sets} sets per oefening` : `${w.sets} sets`);
   return parts.join(' · ');
 }
 
 // Hoe lang een training duurt. Bij werk op aantal hangt dat af van je eigen tempo.
-const durationText = (w) => (w.workMode === 'reps' ? 'Op aantal' : `${formatTime(totalSeconds(w))} min`);
+function durationText(w) {
+  const modes = workModes(w);
+  if (!modes.reps) return `${formatTime(totalSeconds(w))} min`;
+  return modes.time ? 'Tijd en aantal' : 'Op aantal';
+}
 
 // ============ 2. De schermen ============
 
@@ -455,12 +461,13 @@ const FIELDS = [
   { key: 'work', label: 'Werk', hint: 'Zo lang geef je alles', kind: 'time', min: 1, max: 3600 },
   { key: 'reps', label: 'Herhalingen', hint: 'Aantal per oefening', kind: 'count', min: 1, max: 200 },
   { key: 'rest', label: 'Rust', hint: 'Pauze na elke ronde', kind: 'time', min: 0, max: 3600 },
+  { key: 'switchRest', label: 'Wissel van kant', hint: 'Pauze tussen links en rechts', kind: 'time', min: 0, max: 600 },
   { key: 'rounds', label: 'Rondes', hint: 'Aantal keer werk + rust', kind: 'count', min: 1, max: 99 },
   { key: 'sets', label: 'Sets', hint: 'Herhaal alle rondes', kind: 'count', min: 1, max: 20 },
   { key: 'setRest', label: 'Rust tussen sets', hint: 'Langere pauze na elke set', kind: 'time', min: 0, max: 3600 },
   { key: 'cooldown', label: 'Cooling-down', hint: 'Rustig uitbewegen', kind: 'time', min: 0, max: 3600 },
 ];
-const DOTS = { prepare: 'prepare', work: 'work', reps: 'work', rest: 'rest', setRest: 'rest', cooldown: 'cooldown' };
+const DOTS = { prepare: 'prepare', work: 'work', reps: 'work', rest: 'rest', switchRest: 'rest', setRest: 'rest', cooldown: 'cooldown' };
 
 // Bij "per oefening" betekenen sommige velden iets anders: dan krijgen ze een andere naam.
 const PER_EXERCISE_TEXT = {
@@ -470,7 +477,12 @@ const PER_EXERCISE_TEXT = {
   sets: ['Sets per oefening', 'Zo vaak doe je elke oefening'],
   setRest: ['Rust tussen oefeningen', 'Pauze voor de volgende oefening'],
 };
-const fieldText = (f, draft) => (draft.order === 'exercise' && PER_EXERCISE_TEXT[f.key]) || [f.label, f.hint];
+// Zijn er oefeningen op tijd én op aantal? Dan zeggen "Werk" en "Herhalingen" voor welke oefeningen ze gelden.
+const MIXED_HINT = { work: 'Voor de oefeningen op tijd', reps: 'Voor de oefeningen op aantal' };
+function fieldText(f, draft, mixed) {
+  const [label, hint] = (draft.order === 'exercise' && PER_EXERCISE_TEXT[f.key]) || [f.label, f.hint];
+  return [label, (mixed && MIXED_HINT[f.key]) || hint];
+}
 
 // De twee keuzes bovenaan het bewerkscherm, met hun uitleg.
 const CHOICES = {
@@ -485,7 +497,7 @@ const CHOICES = {
 };
 
 function newDraft(userId) {
-  return { userId, name: '', group: '', prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 60, cooldown: 0, workMode: 'time', reps: 12, order: 'circuit', exercises: [] };
+  return { userId, name: '', group: '', prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 60, cooldown: 0, switchRest: SWITCH_DEFAULT, workMode: 'time', reps: 12, order: 'circuit', exercises: [] };
 }
 
 function viewEdit(user) {
@@ -581,11 +593,14 @@ function refreshEditor() {
   d.workMode = d.workMode === 'reps' ? 'reps' : 'time';
   d.order = d.order === 'exercise' ? 'exercise' : 'circuit';
   d.reps = d.reps || 12;
+  d.switchRest = d.switchRest ?? SWITCH_DEFAULT;
   const perExercise = d.order === 'exercise';
-  const byReps = d.workMode === 'reps';
   const exerciseCount = (d.exercises || []).length;
   // Bij "per oefening" is het aantal oefeningen gewoon het aantal dat je toevoegde.
   if (perExercise && exerciseCount) d.rounds = Math.min(99, exerciseCount);
+  // Op tijd of op aantal kan per oefening verschillen: wat komt er in deze training voor?
+  const modes = workModes(d);
+  const mixed = modes.time && modes.reps;
 
   // De twee keuzes bovenaan: de gekozen knop aanduiden en de uitleg tonen.
   app.querySelectorAll('[data-action="set-choice"]').forEach((button) => {
@@ -594,23 +609,31 @@ function refreshEditor() {
     button.setAttribute('aria-pressed', active);
   });
   for (const key of Object.keys(CHOICES)) app.querySelector(`[data-choice-hint="${key}"]`).textContent = CHOICES[key][d[key]][1];
+  // Bij "op tijd / op aantal": zeggen dat een oefening mag afwijken, en hoeveel dat er al doen.
+  const deviating = usedExercises(d).filter((e) => exerciseMode(e, d) !== d.workMode).length;
+  let modeHint = '';
+  if (deviating) modeHint = ` Uitzondering: ${plural(deviating, 'oefening', 'oefeningen')} op ${d.workMode === 'reps' ? 'tijd' : 'aantal'}.`;
+  else if (exerciseCount) modeHint = ' Tik op een oefening om daar iets anders te kiezen.';
+  app.querySelector('[data-choice-hint="workMode"]').textContent += modeHint;
 
   for (const f of FIELDS) {
     const input = app.querySelector(`[data-input="${f.key}"]`);
     if (input && document.activeElement !== input) input.value = f.kind === 'time' ? formatTime(d[f.key]) : d[f.key];
-    const [label, hint] = fieldText(f, d);
+    const [label, hint] = fieldText(f, d, mixed);
     app.querySelector(`[data-label="${f.key}"]`).textContent = label;
     app.querySelector(`[data-hint="${f.key}"]`).textContent = hint;
   }
   // Alleen de velden tonen die bij de gekozen opbouw horen.
   const show = (key, visible) => (app.querySelector(`[data-field="${key}"]`).hidden = !visible);
-  show('work', !byReps);
-  show('reps', byReps);
+  show('work', modes.time);
+  show('reps', modes.reps);
+  show('switchRest', hasSwitchRest(d)); // alleen als er een oefening met links en rechts op tijd is
   show('rounds', !(perExercise && exerciseCount)); // volgt dan vanzelf uit de lijst met oefeningen
   show('setRest', perExercise ? d.rounds > 1 : d.sets > 1); // de lange rust heeft alleen zin als er iets op volgt
 
   const phases = buildPhases(d);
-  app.querySelector('#draftTotalLabel').textContent = byReps ? 'Rust in totaal' : 'Totale tijd';
+  // Werk op aantal heeft geen vaste duur: dan tonen we alleen de tijd die wel vastligt.
+  app.querySelector('#draftTotalLabel').textContent = !modes.reps ? 'Totale tijd' : modes.time ? 'Zonder werk op aantal' : 'Rust in totaal';
   app.querySelector('#draftTotal').textContent = `${formatTime(phases.reduce((sum, p) => sum + p.duration, 0))} min`;
   // Werk op aantal heeft geen duur; in de tijdlijn krijgt het een vaste breedte.
   app.querySelector('#draftTimeline').innerHTML =
@@ -624,11 +647,14 @@ function refreshExercises() {
   const d = ui.draft;
   const list = d.exercises || (d.exercises = []);
   const count = list.length;
+  const modes = workModes(d);
 
   const row = (e, i) => {
     const src = exerciseImage(e);
-    const repsText = d.workMode === 'reps' ? `${e.reps || d.reps}×` : '';
-    const details = [repsText, e.note || 'Geen uitleg', e.video ? 'met filmpje' : ''].filter(Boolean).join(' · ');
+    // Hoeveel werk: het aantal, of de tijd als er in deze training ook oefeningen op aantal zijn.
+    let workText = exerciseMode(e, d) === 'reps' ? `${e.reps || d.reps}×` : modes.reps ? shortTime(d.work) : '';
+    if (e.sides) workText = workText ? `${workText} per kant` : 'links en rechts';
+    const details = [workText, e.note || 'Geen uitleg', e.video ? 'met filmpje' : ''].filter(Boolean).join(' · ');
     return `<div class="exercise">
       <button class="exercise-main" data-action="edit-exercise" data-id="${e.id}" aria-label="${esc(e.name)} bewerken">
         ${src ? `<img class="thumb" src="${esc(src)}" alt="" />` : `<span class="thumb thumb--empty">${i + 1}</span>`}
@@ -803,7 +829,9 @@ function startRun(workout) {
 
       // Tijdens het werk tonen we de naam van de oefening; anders de naam van de fase.
       const exercise = phase.type === 'work' ? phase.exercise : null;
-      setText('phase', exercise ? exercise.name : phaseLabel(phase.type, workout));
+      setText('phase', exercise ? exercise.name : labelFor(phase, workout));
+      // Bij een oefening met links en rechts staat erboven welke kant aan de beurt is.
+      setText('kicker', phase.side ? `Werk · ${phase.side}` : 'Werk');
       el.classList.toggle('is-untimed', !!phase.untimed);
       ref.phase.classList.toggle('is-long', !!exercise && exercise.name.length > 14);
       ref.kicker.hidden = !exercise;
@@ -824,7 +852,7 @@ function startRun(workout) {
         ref.cardImg.hidden = !src;
         if (src && shown.cardSrc !== src) ref.cardImg.src = shown.cardSrc = src;
         setText('cardLabel', comingUp ? 'Hierna' : 'Uitleg');
-        setText('cardName', comingUp ? shownExercise.name : '');
+        setText('cardName', comingUp ? `${shownExercise.name}${nextWork.side ? ` · ${nextWork.side}` : ''}` : '');
         setText('cardNote', shownExercise.note || (comingUp ? '' : shownExercise.video ? 'Tik om het filmpje te bekijken' : ''));
       }
       run.exercise = hasDetails ? shownExercise : null;
@@ -834,15 +862,16 @@ function startRun(workout) {
       ref.next.hidden = !!comingUp;
       let nextText = 'Laatste fase. Bijna klaar!';
       if (phase.untimed) nextText = 'Tik op het vinkje als je klaar bent';
-      else if (upcoming && upcoming.untimed) nextText = `Hierna: ${upcoming.reps}× ${upcoming.exercise ? upcoming.exercise.name.toLowerCase() : 'werk'}`;
-      else if (upcoming) nextText = `Hierna: ${phaseLabel(upcoming.type, workout).toLowerCase()} · ${formatTime(upcoming.duration)}`;
+      else if (upcoming && upcoming.untimed) nextText = `Hierna: ${upcoming.reps}× ${upcoming.exercise ? upcoming.exercise.name.toLowerCase() : 'werk'}${upcoming.side ? ` ${upcoming.side}` : ''}`;
+      else if (upcoming) nextText = `Hierna: ${upcoming.side || labelFor(upcoming, workout).toLowerCase()} · ${formatTime(upcoming.duration)}`;
       setText('next', nextText);
       fitRing();
 
-      const workName = exercise ? exercise.name : 'Werk';
+      // De stem zegt ook de kant, bv. "Zijplank links".
+      const workName = `${exercise ? exercise.name : 'Werk'}${phase.side ? ` ${phase.side}` : ''}`;
       if (phase.type === 'work') sound.work(phase.untimed ? `${workName}, ${phase.reps} keer` : workName);
       else if (phase.type === 'prepare') sound.prepare();
-      else sound.rest(phaseLabel(phase.type, workout));
+      else sound.rest(labelFor(phase, workout));
     },
     onCountdown() {
       sound.countdown();
@@ -1025,7 +1054,7 @@ async function shareSheet() {
   const user = store.activeUser();
   const workout = { ...ui.draft, name: ui.draft.name.trim() || 'Mijn training' };
   const url = shareUrl(await encodeWorkout(workout, user.name));
-  const summary = workout.workMode === 'reps' ? workoutSummary(workout) : `${workoutSummary(workout)}, ${formatTime(totalSeconds(workout))} min`;
+  const summary = workModes(workout).reps ? workoutSummary(workout) : `${workoutSummary(workout)}, ${formatTime(totalSeconds(workout))} min`;
   const message = shareMessage({ name: workout.name, summary, from: user.name, url });
   const hasPhotos = (workout.exercises || []).some((e) => e.imageId);
 
@@ -1218,14 +1247,22 @@ function exerciseSheet(exercise = null) {
         <span>Afbeelding <em>(optioneel)</em></span>
         <div id="exerciseImage"></div>
       </div>
-      ${
-        ui.draft.workMode === 'reps'
-          ? `<label class="textfield">
-              <span>Aantal herhalingen <em>(optioneel)</em></span>
-              <input name="reps" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="Standaard: ${ui.draft.reps}" value="${exercise && exercise.reps ? exercise.reps : ''}" autocomplete="off" />
-            </label>`
-          : ''
-      }
+      <div class="textfield">
+        <span>Op tijd of op aantal</span>
+        <div class="segmented segmented--field" role="group" aria-label="Deze oefening op tijd of op aantal">
+          <button type="button" data-action="set-exercise-mode" data-value="time">Op tijd</button>
+          <button type="button" data-action="set-exercise-mode" data-value="reps">Op aantal</button>
+        </div>
+        <p class="muted hint hint--field" id="exerciseModeHint"></p>
+      </div>
+      <label class="textfield" id="exerciseRepsField">
+        <span>Aantal herhalingen <em>(optioneel)</em></span>
+        <input name="reps" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="Standaard: ${ui.draft.reps}" value="${exercise && exercise.reps ? exercise.reps : ''}" autocomplete="off" />
+      </label>
+      <button type="button" class="row row--field" role="switch" aria-checked="false" data-action="toggle-exercise-sides" id="exerciseSides">
+        <span class="row-body"><strong>Links en rechts</strong><small id="exerciseSidesHint"></small></span>
+        <span class="switch"></span>
+      </button>
       <label class="textfield">
         <span>Filmpje <em>(optioneel)</em></span>
         <input name="video" type="text" inputmode="url" maxlength="300" placeholder="Plak hier een link, bv. van YouTube" value="${exercise ? esc(exercise.video || '') : ''}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
@@ -1237,8 +1274,45 @@ function exerciseSheet(exercise = null) {
       ${exercise ? `<button class="link link--danger" type="button" data-action="delete-exercise">${icon.trash} Oefening verwijderen</button>` : ''}
     </form>`);
   // Na openSheet, want die maakt eerst alles leeg.
-  exerciseEdit = { id: exercise?.id || null, imageId: exercise?.imageId || null, libraryId: exercise?.libraryId || null, newImage: null };
+  exerciseEdit = {
+    id: exercise?.id || null,
+    imageId: exercise?.imageId || null,
+    libraryId: exercise?.libraryId || null,
+    newImage: null,
+    mode: exerciseMode(exercise, ui.draft), // een nieuwe oefening start met de keuze van de training
+    sides: exercise?.sides === true,
+  };
   refreshExerciseImage();
+  refreshExerciseOptions();
+}
+
+// Toont in de pop-up wat gekozen is: op tijd of op aantal, en links en rechts.
+function refreshExerciseOptions() {
+  if (!exerciseEdit || !ui.draft) return;
+  const { mode, sides } = exerciseEdit;
+  const byReps = mode === 'reps';
+  document.querySelectorAll('[data-action="set-exercise-mode"]').forEach((button) => {
+    const active = button.dataset.value === mode;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', active);
+  });
+  // Het aantal vul je alleen in bij "op aantal". Op tijd geldt de werktijd van de training.
+  document.querySelector('#exerciseRepsField').hidden = !byReps;
+  const perSide = sides ? ' per kant' : '';
+  document.querySelector('#exerciseModeHint').textContent = byReps
+    ? `Je doet je herhalingen${perSide} en tikt op het vinkje.`
+    : `De timer telt ${shortTime(ui.draft.work)}${perSide} af: de werktijd van deze training.`;
+
+  const toggle = document.querySelector('#exerciseSides');
+  toggle.setAttribute('aria-checked', sides);
+  let sidesHint = 'Voor een oefening die je aan elke kant doet, zoals een zijplank.';
+  if (sides) {
+    const pause = ui.draft.switchRest ?? SWITCH_DEFAULT;
+    sidesHint = byReps
+      ? 'Eerst links, dan rechts. Je tikt zelf door naar de andere kant.'
+      : `Eerst links, dan rechts${pause > 0 ? `, met ${shortTime(pause)} om te wisselen` : ', zonder pauze'}.`;
+  }
+  document.querySelector('#exerciseSidesHint').textContent = sidesHint;
 }
 
 // Toont in de pop-up de huidige afbeelding, of een knop om er een toe te voegen.
@@ -1527,6 +1601,14 @@ const actions = {
     [list[from], list[to]] = [list[to], list[from]];
     refreshExercises();
   },
+  'set-exercise-mode'(el) {
+    exerciseEdit.mode = el.dataset.value;
+    refreshExerciseOptions();
+  },
+  'toggle-exercise-sides'() {
+    exerciseEdit.sides = !exerciseEdit.sides;
+    refreshExerciseOptions();
+  },
   'delete-exercise'() {
     ui.draft.exercises = ui.draft.exercises.filter((e) => e.id !== exerciseEdit.id);
     closeSheet();
@@ -1787,10 +1869,18 @@ document.addEventListener('submit', (event) => {
 
   const existing = ui.draft.exercises.find((e) => e.id === exerciseEdit.id);
   // Het eigen aantal herhalingen: leeg = het standaardaantal van de training.
-  // Staat het veld er niet (training op tijd), dan blijft een eerder ingevuld aantal bewaard.
+  // Bij "op tijd" is het veld verborgen, maar een eerder ingevuld aantal blijft erin staan en dus bewaard.
   const typedReps = parseInt(values.get('reps'), 10);
-  const reps = values.has('reps') ? (typedReps > 0 ? Math.min(200, typedReps) : null) : (existing?.reps ?? null);
-  const fields = { name, note: String(values.get('note')).trim().slice(0, 400), imageId, libraryId: exerciseEdit.libraryId, video, reps };
+  const reps = typedReps > 0 ? Math.min(200, typedReps) : null;
+
+  // Op tijd of op aantal. We bewaren de keuze alleen als ze afwijkt van de training (anders null):
+  // zo volgt de oefening vanzelf mee als je later de hele training omzet.
+  // Heb je de keuze niet aangeraakt, dan blijft bewaard wat er stond.
+  const chosen = exerciseEdit.mode;
+  const untouched = existing && chosen === exerciseMode(existing, ui.draft);
+  const mode = untouched ? existing.mode ?? null : chosen === ui.draft.workMode ? null : chosen;
+
+  const fields = { name, note: String(values.get('note')).trim().slice(0, 400), imageId, libraryId: exerciseEdit.libraryId, video, reps, mode, sides: exerciseEdit.sides };
   if (existing) Object.assign(existing, fields);
   else ui.draft.exercises.push({ id: newId(), ...fields });
   closeSheet();

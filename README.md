@@ -9,7 +9,10 @@ De app is een **web-app (PWA)**: je zet ze op het beginscherm van je iPhone en z
 - **Meerdere gebruikers** – elk profiel heeft een eigen naam, kleur, trainingen en sessies.
 - **Trainingen op maat** – voorbereiding, werk, rust, rondes, sets, rust tussen sets en cooling-down.
 - **Op tijd of op aantal** – laat de timer aftellen, of werk met herhalingen (bv. 3 sets van 12) en tik op het
-  vinkje als je klaar bent. Kies per training tussen een circuit en alle sets per oefening.
+  vinkje als je klaar bent. Je kiest dit voor de hele training en kan er per oefening van afwijken.
+  Kies per training tussen een circuit en alle sets per oefening.
+- **Links en rechts** – een oefening die je aan elke kant doet (bv. een zijplank) zet je in één keer in de lijst.
+  De timer doet eerst links en dan rechts, met een wisselpauze die je zelf instelt.
 - **Groepen** – orden je trainingen per groep (bv. Cardio, Kracht).
 - **Oefeningen** – kies per training oefeningen uit een ingebouwde bibliotheek met tekeningen, of maak een eigen
   oefening met naam, uitleg, een eigen foto en een link naar een filmpje. De timer toont bij elke ronde wat je moet doen.

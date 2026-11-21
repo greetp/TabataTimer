@@ -8,7 +8,7 @@
 // zie je een nieuwe versie niet meteen.
 // ---------------------------------------------------------------
 
-const CACHE = 'tabata-timer-v11';
+const CACHE = 'tabata-timer-v12';
 
 const FILES = [
   './',

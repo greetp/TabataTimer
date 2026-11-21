@@ -1959,3 +1959,26 @@ a.row {
 .choice .hint {
   margin: 0 0.25rem;
 }
+
+/* De keuzes in de pop-up van een oefening: op tijd of op aantal, en links en rechts. */
+.segmented--field {
+  margin: 0 0 0.5rem;
+}
+
+.hint--field {
+  margin: 0 0.25rem;
+}
+
+.row--field {
+  margin-top: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  text-align: left;
+}
+
+.row--field .row-body strong,
+.row--field .row-body small {
+  white-space: normal;
+}
+

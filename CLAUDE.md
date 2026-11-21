@@ -103,7 +103,11 @@ Zeg altijd eerlijk wat alleen in de testbrowser is nagekeken en wat op een echt 
 
 ## Bekende grenzen (bewuste keuzes)
 
-- Een training is volledig op tijd of volledig op aantal herhalingen; mengen kan niet.
+- Op tijd of op aantal kies je voor de training, en een oefening kan ervan afwijken (veld `mode` van de
+  oefening; leeg = volgt de training). Alle oefeningen op tijd duren wel even lang: de werktijd van de training.
+- Een oefening met "links en rechts" (veld `sides`) geeft twee werkfases. De tijd of het aantal geldt per kant.
+  De wisselpauze (`switchRest` van de training, standaard 5 s) komt er alleen tussen bij een oefening op tijd;
+  op aantal tikt de gebruiker zelf door.
 - Eigen foto's gaan niet mee bij het delen van een training: ze zijn te groot voor een link.
 - Een link in een bericht opent in de browser, niet in de app op het beginscherm, en die twee bewaren
   hun gegevens apart. Daarom kopieert de ontvanger het bericht en plakt hij het via "Training ontvangen".

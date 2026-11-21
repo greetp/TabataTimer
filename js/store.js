@@ -47,7 +47,8 @@ export const newId = () => Date.now().toString(36) + Math.random().toString(36).
 // Maakt een oefening op basis van een oefening uit de bibliotheek.
 export function exerciseFromLibrary(libraryId) {
   const item = libraryItem(libraryId);
-  return { id: newId(), name: item.name, note: item.note, libraryId, imageId: null, video: '' };
+  // Sommige oefeningen doe je aan elke kant (bv. de zijplank): die starten met "links en rechts" aan.
+  return { id: newId(), name: item.name, note: item.note, libraryId, imageId: null, video: '', sides: item.sides === true };
 }
 
 // Kijkt een link naar een filmpje na. Geeft '' terug als het geen geldige weblink is.
@@ -88,6 +89,9 @@ function uniqueById(items) {
 // Het eigen aantal herhalingen van een oefening: een getal van 1 tot 200, of null als er geen is.
 const cleanReps = (value) => (Number(value) > 0 ? cleanNumber(value, 1, 200, null) : null);
 
+// De eigen werktijd van een oefening: 1 tot 3600 seconden, of null als ze de tijd van de training volgt.
+const cleanWork = (value) => (Number(value) > 0 ? cleanNumber(value, 1, 3600, null) : null);
+
 // De eigen keuze van een oefening: 'time' of 'reps', of null als ze de training volgt.
 const cleanMode = (value) => (value === 'time' || value === 'reps' ? value : null);
 
@@ -122,6 +126,7 @@ export function sanitizeWorkout(raw) {
         video: cleanUrl(e.video),
         reps: cleanReps(e.reps),
         mode: cleanMode(e.mode),
+        work: cleanWork(e.work),
         sides: e.sides === true,
       })),
   };
@@ -142,6 +147,7 @@ const cleanExercises = (value) =>
         video: cleanUrl(e.video),
         reps: cleanReps(e.reps),
         mode: cleanMode(e.mode),
+        work: cleanWork(e.work),
         sides: e.sides === true,
       }))
   );

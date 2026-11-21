@@ -6,6 +6,8 @@
 //   group  onder welke titel ze in de lijst staat
 //   name   de naam die de gebruiker ziet
 //   note   korte uitleg (de gebruiker kan die nadien aanpassen)
+//   sides  (optioneel) true = een oefening die je links en rechts doet;
+//          ze start dan met "Links en rechts" aan
 //
 // Een oefening toevoegen? Zet ze hier in de lijst én teken het
 // figuurtje in tools/teken-oefeningen.mjs (zelfde id).
@@ -24,7 +26,7 @@ export const LIBRARY = [
   { id: 'sidelegraise', group: 'Benen', name: 'Beenheffen in zijlig', note: 'Lig op je zij met gestrekte benen. Til je bovenste been op en laat het langzaam zakken. Wissel van kant.' },
 
   { id: 'plank', group: 'Romp', name: 'Plank', note: 'Steun op je onderarmen en tenen. Span je buik aan en hou je lichaam recht.' },
-  { id: 'sideplank', group: 'Romp', name: 'Zijplank', note: 'Steun op één hand of onderarm, lichaam in één lijn. Wissel halverwege van kant.' },
+  { id: 'sideplank', group: 'Romp', name: 'Zijplank', note: 'Steun op één hand of onderarm, lichaam in één lijn.', sides: true },
   { id: 'situp', group: 'Romp', name: 'Sit-ups', note: 'Lig op je rug met gebogen knieën. Rol je bovenlichaam op en zak rustig terug.' },
   { id: 'russiantwist', group: 'Romp', name: 'Russian twist', note: 'Zit met je rug schuin naar achteren. Draai je romp afwisselend naar links en rechts.' },
   { id: 'legraise', group: 'Romp', name: 'Beenheffen', note: 'Lig op je rug. Til je gestrekte benen op en laat ze traag zakken zonder de grond te raken.' },

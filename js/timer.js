@@ -48,8 +48,12 @@ export function exerciseMode(exercise, w) {
 // De oefeningen die echt aan bod komen: bij meer oefeningen dan rondes alleen de eerste.
 export const usedExercises = (w) => (w.exercises || []).slice(0, w.rounds);
 
-// Is er een oefening met links en rechts die op tijd gaat? Alleen dan is er een wisselpauze.
-export const hasSwitchRest = (w) => usedExercises(w).some((e) => e.sides && exerciseMode(e, w) === 'time');
+// Is er een oefening met links en rechts? Alleen dan is er een wisselpauze.
+export const hasSwitchRest = (w) => usedExercises(w).some((e) => e.sides);
+
+// Hoe lang duurt het werk van deze oefening als ze op tijd gaat?
+// Een eigen tijd van de oefening gaat voor op de werktijd van de training.
+export const exerciseWork = (exercise, w) => (exercise && exercise.work > 0 ? exercise.work : w.work);
 
 // Wat komt er in deze training voor: werk op tijd, werk op aantal, of allebei?
 export function workModes(w) {
@@ -80,14 +84,14 @@ export function buildPhases(w) {
     const byReps = exerciseMode(exercise, w) === 'reps';
     const sides = exercise && exercise.sides ? ['links', 'rechts'] : [null];
     sides.forEach((side, i) => {
+      // Tussen de twee kanten krijg je even de tijd om te wisselen. Dat is een gewone rustfase met een eigen naam.
+      if (i > 0 && switchRest > 0) phases.push({ type: 'rest', label: 'Wissel van kant', duration: switchRest, round, set, exercise: null, side: null });
       if (byReps) {
-        // Op aantal tik je zelf door van links naar rechts: daar is geen wisselpauze nodig.
         const reps = (exercise && exercise.reps) || w.reps || 12;
         phases.push({ type: 'work', duration: 0, untimed: true, reps, round, set, exercise, side });
       } else {
-        // Op tijd krijg je tussen de twee kanten even de tijd om te wisselen.
-        if (i > 0 && switchRest > 0) phases.push({ type: 'rest', label: 'Wissel van kant', duration: switchRest, round, set, exercise: null, side: null });
-        if (w.work > 0) phases.push({ type: 'work', duration: w.work, round, set, exercise, side });
+        const duration = exerciseWork(exercise, w);
+        if (duration > 0) phases.push({ type: 'work', duration, round, set, exercise, side });
       }
     });
   };

@@ -117,6 +117,10 @@ const wall = (x) => `<rect x="${x}" y="12" width="13" height="${GROUND - 12}" rx
 // Een muur achter het figuurtje (vooraanzicht).
 const wallBehind = `<rect x="14" y="10" width="92" height="${GROUND - 10}" rx="6" fill="#e6e2dc"/>`;
 
+// Onderdelen van een toestel (fiets, roeier ...): een stang en een wiel, in de kleur van de muur.
+const bar = (points, width = 4) => line(points, COLOR.prop, width);
+const wheel = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${COLOR.prop}"/><circle cx="${x}" cy="${y}" r="${n(r * 0.3)}" fill="${COLOR.bg}"/>`;
+
 // ---------------- De houdingen ----------------
 
 const squatDown = { at: ['ankle', [54, 103]], torso: -62, leg: [12, 112], arm: [5, -8] };
@@ -174,6 +178,58 @@ const DRAWINGS = {
   highknees: figure({ at: ['farAnkle', [56, 103]], torso: -88, leg: [-5, 95], farLeg: [90, 90], arm: [130, 60], farArm: [40, -50] }),
 
   burpee: figure({ at: ['ankle', [30, 103]], torso: -35, head: -20, leg: [-22, 115], arm: [80, 85] }, true) + figure(jump(84, 98)),
+
+  // ---------------- Cardiotoestellen ----------------
+
+  // Hometrainer: zitten, licht voorover, één been gestrekt op de trapper.
+  bike:
+    bar([[30, 106], [94, 106]]) + // voet van het toestel
+    wheel(82, 91, 13) + // vliegwiel vooraan
+    bar([[54.5, 91], [82, 91]]) + // van de trapas naar het vliegwiel
+    bar([[54.5, 91], [45, 66]]) + // zadelpen
+    bar([[39, 65], [51, 65]], 5) + // zadel
+    bar([[82, 91], [79, 54]]) + // stuurpen
+    bar([[75, 52], [83, 52]], 5) + // stuur
+    `<circle cx="54.5" cy="91" r="4" fill="${COLOR.prop}"/>` +
+    figure({ at: ['hip', [46, 60]], torso: -65, head: -60, leg: [70, 100], farLeg: [15, 105], arm: [50, 20] }),
+
+  // Roeitoestel: van voorover met gebogen knieën naar achterover met gestrekte benen.
+  rower: (() => {
+    const feet = [80, 90];
+    const pull = { at: ['ankle', feet], torso: -105, head: -100, leg: [2, 16, -60], arm: [120, 5] };
+    const reach = { at: ['ankle', feet], torso: -70, head: -65, leg: [-37, 65, -60], arm: [20, 15] };
+    return (
+      bar([[20, 99], [98, 99]]) + // de rail
+      bar([[22, 99], [22, 107]]) + // steun achteraan
+      bar([[98, 84], [98, 107]]) + // steun vooraan
+      wheel(104, 78, 11) + // vliegwiel
+      bar([[76, 97], [83, 84]], 5) + // voetplaat
+      bar([[36, 91], [48, 91]], 5) + // zitje
+      bar([[46, 71], [96, 76]], 2) + // ketting naar de greep
+      figure(reach, true) +
+      figure(pull)
+    );
+  })(),
+
+  // SkiErg: van rechtop met de armen omhoog naar voorover gebogen met de handen naast de heupen.
+  skierg:
+    bar([[100, 12], [100, 106]], 7) + // de mast
+    bar([[88, 12], [100, 12]], 5) + // de kop met de katrollen
+    wheel(100, 78, 10) + // vliegwiel
+    bar([[88, 106], [110, 106]]) + // voet
+    bar([[88, 14], [68, 15]], 2) + // koord naar de greep
+    figure({ at: ['ankle', [52, 103]], torso: -88, leg: [90, 90], arm: [-60, -55] }, true) +
+    figure({ at: ['ankle', [52, 103]], torso: -50, head: -40, leg: [75, 100, 0], arm: [105, 110] }),
+
+  // Crosstrainer: rechtop stappen op de pedalen, armen bewegen mee met de stangen.
+  crosstrainer:
+    bar([[26, 106], [102, 106]]) + // voet van het toestel
+    bar([[90, 90], [30, 100]]) + // pedaalstang achterste voet
+    bar([[82, 86], [77, 27]]) + // stang voor de achterste hand
+    wheel(90, 92, 13) + // vliegwiel vooraan
+    bar([[90, 97], [48, 102]]) + // pedaalstang voorste voet
+    bar([[82, 86], [59, 40]]) + // stang voor de voorste hand
+    figure({ at: ['hip', [52, 58]], torso: -85, leg: [70, 95], farLeg: [105, 120], arm: [110, 10], farArm: [30, -30] }),
 
   // Op de zij liggen; het bovenste been gaat gestrekt omhoog.
   // Drie dingen tonen dat het figuurtje op de zij ligt en niet op de rug:

@@ -40,6 +40,10 @@ export const LIBRARY = [
   { id: 'highknees', group: 'Cardio', name: 'Knieheffen', note: 'Loop ter plaatse en trek je knieën om de beurt hoog op.' },
   { id: 'mountainclimber', group: 'Cardio', name: 'Mountain climbers', note: 'Start in plankhouding en trek om de beurt je knieën naar je borst.' },
   { id: 'burpee', group: 'Cardio', name: 'Burpees', note: 'Zak door je knieën, spring naar plankhouding, kom terug en spring omhoog.' },
+  { id: 'bike', group: 'Cardio', name: 'Fietsen', note: 'Trap stevig door op de hometrainer. Hou je rug lang en je schouders los.' },
+  { id: 'rower', group: 'Cardio', name: 'Roeien', note: 'Duw eerst met je benen, leun dan licht achterover en trek de greep naar je buik. Keer rustig terug.' },
+  { id: 'skierg', group: 'Cardio', name: 'SkiErg', note: 'Trek de grepen van boven naar je heupen en buig mee door je heupen en knieën. Kom rustig weer recht.' },
+  { id: 'crosstrainer', group: 'Cardio', name: 'Crosstrainer', note: 'Stap in een vloeiende beweging en duw en trek mee met je armen. Blijf rechtop staan.' },
 
   // Muurpilates: je hebt alleen een vrije muur nodig, geen toestellen.
   { id: 'wallsit', group: 'Muurpilates', name: 'Muurzit', note: 'Rug tegen de muur, knieën in een rechte hoek. Blijf zo zitten.' },
